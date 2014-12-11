@@ -1,0 +1,11 @@
+*~
+*.bak
+*.swp
+*.log
+.idea
+*.iml
+*.DS_Store
+target
+*.ruby-version
+atlassian-ide-plugin.xml
+dependency-reduced-pom.xml

@@ -189,7 +189,7 @@ public class CrontabExpression {
           rangeStartInteger = 0;
         }
 
-        checkArgument(allowedRange.contains(rangeStartInteger), "Invalid cron expression for %s (rangeStart is not valid): %s", expressionPart.name(), expression);
+        checkArgument(allowedRange.contains(rangeStartInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.expressionRange, expression);
 
         rangeStart = rangeStartInteger;
 
@@ -204,7 +204,7 @@ public class CrontabExpression {
             rangeEndInteger = 0;
           }
 
-          checkArgument(allowedRange.contains(rangeEndInteger), "Invalid cron expression for %s (rangeEnd is not valid): %s", expressionPart.name(), expression);
+          checkArgument(allowedRange.contains(rangeEndInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.expressionRange, expression);
 
           rangeEnd = rangeEndInteger;
 

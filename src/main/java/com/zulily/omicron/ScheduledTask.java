@@ -230,9 +230,6 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
     return (newValue + ((n - 1) * currentAverage)) / n;
   }
 
-
-
-
   @Override
   public int compareTo(ScheduledTask o) {
     checkNotNull(o, "scheduledTask Compare");

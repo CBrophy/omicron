@@ -11,7 +11,7 @@ import static com.zulily.omicron.Utils.info;
 public class TimeSinceLastSuccess implements Policy {
   private final Configuration configuration;
 
-  public TimeSinceLastSuccess(final Configuration configuration){
+  public TimeSinceLastSuccess(final Configuration configuration) {
     this.configuration = checkNotNull(configuration, "configuration");
   }
 
@@ -19,7 +19,7 @@ public class TimeSinceLastSuccess implements Policy {
   public boolean evaluate(ScheduledTask scheduledTask) {
     boolean result = DateTime.now().getMillis() - scheduledTask.getLastSuccessTimestamp() <= configuration.getSlaMinMillisSinceSuccess();
 
-    if(!result) {
+    if (!result) {
       info(String.format("%s failed %s: last success at %s", scheduledTask.toString(), getName(), (new LocalDateTime(scheduledTask.getLastSuccessTimestamp(), configuration.getChronology())).toString("yyyyMMdd HH:mm:ss")));
     }
 
@@ -28,7 +28,7 @@ public class TimeSinceLastSuccess implements Policy {
 
   @Override
   public boolean enabled() {
-   return configuration.getSlaMinMillisSinceSuccess() > 0L;
+    return configuration.getSlaMinMillisSinceSuccess() > 0L;
   }
 
   @Override

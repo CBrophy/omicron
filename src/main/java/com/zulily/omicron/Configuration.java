@@ -6,7 +6,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
-import com.google.common.primitives.Longs;
 import com.zulily.omicron.alert.Email;
 import org.joda.time.Chronology;
 import org.joda.time.DateTimeZone;

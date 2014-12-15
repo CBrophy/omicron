@@ -1,0 +1,4 @@
+
+* * * * * root echo "every minute"
+*/2 * * * root echo "every two minutes"
+*/5 * * * root echo "every five minutes"

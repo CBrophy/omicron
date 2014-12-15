@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
+import com.google.common.primitives.Longs;
 import com.zulily.omicron.alert.Email;
 import org.joda.time.Chronology;
 import org.joda.time.DateTimeZone;
@@ -18,9 +19,11 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
-
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.zulily.omicron.Utils.info;
+import static com.zulily.omicron.Utils.warn;
 
 public class Configuration {
 
@@ -33,6 +36,7 @@ public class Configuration {
     AlertSmtpPort("alert.smtp.port", "25"),
     TaskDuplicateAllowedCount("task.duplicate.allowed.count", "2"),
     TaskReturnCodeCriticalFailureThreshold("task.return.code.critical.failure.threshold", "100"), // must be between 0 and 255
+    SLAMinMillisSinceSuccess("sla.min.milliseconds.since.success", String.valueOf(TimeUnit.HOURS.toMillis(1))), // must be between 0 and 255
     TimeZone("timezone", "UTC"),
     Unknown("", "");
 
@@ -69,6 +73,7 @@ public class Configuration {
   private final Email alertEmail;
   private final int taskDuplicateAllowedCount;
   private final int taskReturnCodeCriticalFailureThreshold;
+  private final long slaMinMillisSinceSuccess;
   private final Chronology chronology;
 
   Configuration(final File configFile) {
@@ -92,20 +97,23 @@ public class Configuration {
     this.taskReturnCodeCriticalFailureThreshold = Math.abs(Integer.parseInt(getConfigValue(ConfigKey.TaskReturnCodeCriticalFailureThreshold)));
 
     DateTimeZone timeZone = DateTimeZone.forID(getConfigValue(ConfigKey.TimeZone));
+
     this.chronology = ISOChronology.getInstance(timeZone);
+
+    this.slaMinMillisSinceSuccess = Math.abs(Long.parseLong(getConfigValue(ConfigKey.SLAMinMillisSinceSuccess)));
 
     this.printConfig();
   }
 
   private void printConfig() {
-    System.out.println("Loaded config:");
+    info("Loaded config:");
 
     for (ConfigKey configKey : ConfigKey.values()) {
       if (configKey == ConfigKey.Unknown) {
         continue;
       }
 
-      System.out.println(String.format("%s = %s", configKey.rawName, getConfigValue(configKey)));
+      info(String.format("%s = %s", configKey.rawName, getConfigValue(configKey)));
     }
 
   }
@@ -122,8 +130,9 @@ public class Configuration {
   private static ImmutableMap<ConfigKey, String> loadConfig(final File configFile) {
 
     if (!Utils.fileExistsAndCanRead(configFile)) {
-      System.out.println(
-        configFile == null ? "No config file specified. Will use defaults." : "Config file not found, not a file, or cannot be read. Will use defaults.");
+
+      info(configFile == null ? "No config file specified. Will use defaults." : "Config file not found, not a file, or cannot be read. Will use defaults.");
+
       return ImmutableMap.of();
     }
 
@@ -144,15 +153,19 @@ public class Configuration {
         List<String> configLineParts = equalSplitter.splitToList(trimmed);
 
         if (configLineParts.size() != 2) {
-          System.out.println("Skipping malformed config line: " + trimmed);
+
+          warn("Skipping malformed config line: " + trimmed);
           continue;
+
         }
 
         ConfigKey configKey = ConfigKey.fromString(configLineParts.get(0));
 
         if (configKey == ConfigKey.Unknown) {
-          System.out.println("Skipping unknown config param: " + trimmed);
+
+          warn("Skipping unknown config param: " + trimmed);
           continue;
+
         }
 
         config.put(configKey, configLineParts.get(1));
@@ -164,7 +177,7 @@ public class Configuration {
     }
 
     if (config.isEmpty()) {
-      System.out.println("Config file values not loaded. Will use defaults.");
+      warn("Config file values not loaded. Will use defaults.");
     }
 
     return ImmutableMap.copyOf(config);
@@ -194,5 +207,8 @@ public class Configuration {
     return chronology;
   }
 
+  public long getSlaMinMillisSinceSuccess() {
+    return slaMinMillisSinceSuccess;
+  }
 
 }

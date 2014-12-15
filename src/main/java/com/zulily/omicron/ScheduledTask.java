@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.zulily.omicron.Utils.info;
+import static com.zulily.omicron.Utils.warn;
 
 public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
   private final CrontabExpression crontabExpression;
@@ -49,16 +51,25 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
     this.executingUser = crontabExpression.getExecutingUser();
   }
 
-  public boolean shouldRunNow(final LocalDateTime localDateTime) {
+  private boolean shouldRunNow(final LocalDateTime localDateTime) {
 
-    return isActive()
-      && crontabExpression.getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
-      && crontabExpression.getMonths().contains(localDateTime.getMonthOfYear())
-      && crontabExpression.getDays().contains(localDateTime.getDayOfMonth())
-      && crontabExpression.getHours().contains(localDateTime.getHourOfDay())
-      && crontabExpression.getMinutes().contains(localDateTime.getMinuteOfHour())
-      && runningTasks.size() < configuration.getTaskDuplicateAllowedCount();
+    if(crontabExpression.timeInSchedule(localDateTime)){
 
+      if(!isActive()){
+        info(String.format("%s skipped execution because it is inactive", commandLine));
+        return false;
+      }
+
+      if(runningTasks.size() >= configuration.getTaskDuplicateAllowedCount()) {
+        warn(String.format("%s skipped execution because there are already %s running", commandLine, runningTasks.size()));
+        return false;
+      }
+
+      return true;
+
+    }
+
+    return false;
   }
 
   @Override
@@ -72,7 +83,7 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
 
       this.executionCount.getAndIncrement();
 
-      System.out.println(String.format("[%s] Executing: %s", localDateTime.toString("yyyyMMdd HH:mm"), commandLine));
+      info(String.format("[scheduled@%s] Executing: %s", localDateTime.toString("yyyyMMdd HH:mm"), commandLine));
 
       RunningTask runningTask = new RunningTask(commandLine, executingUser);
 
@@ -88,7 +99,6 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
 
       this.skippedExecutionCount.getAndIncrement();
 
-      System.out.println(String.format("[%s] Would NOT execute: %s", localDateTime.toString("yyyyMMdd HH:mm"), commandLine));
     }
   }
 
@@ -219,6 +229,9 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
   private static long rollAverage(final long currentAverage, final long newValue, final int n) {
     return (newValue + ((n - 1) * currentAverage)) / n;
   }
+
+
+
 
   @Override
   public int compareTo(ScheduledTask o) {

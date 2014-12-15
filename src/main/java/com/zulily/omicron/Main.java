@@ -5,6 +5,7 @@ import com.google.common.base.Throwables;
 import java.io.File;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.zulily.omicron.Utils.error;
 
 public class Main {
 
@@ -26,7 +27,7 @@ public class Main {
 
       System.exit(0);
     } catch (Exception e) {
-      System.out.println(Throwables.getStackTraceAsString(e));
+      error("Caught exception in primary thread:\n\n" + Throwables.getStackTraceAsString(e));
       System.exit(1);
     }
 

@@ -19,6 +19,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static com.zulily.omicron.Utils.error;
 
 public final class Crontab {
   private final ImmutableSet<CrontabExpression> crontabExpressions;
@@ -66,7 +67,7 @@ public final class Crontab {
 
         } catch (Exception e){
           bad++;
-          System.out.println(String.format("[Line: %s] Failed to read crontab entry: %s", lineNumber, trimmed));
+          error(String.format("[Line: %s] Failed to read crontab entry: %s", lineNumber, trimmed));
         }
 
       }

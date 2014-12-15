@@ -8,6 +8,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.zulily.omicron.Utils.error;
+import static com.zulily.omicron.Utils.info;
+import static com.zulily.omicron.Utils.warn;
 
 public class RunningTask implements Runnable, Comparable<RunningTask> {
 
@@ -47,11 +50,9 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
       this.endTimeMilliseconds.set(DateTime.now().getMillis());
 
     } catch (InterruptedException e) {
-      System.out.println("Command was interrupted: " + commandLine);
-      System.out.println(e.getMessage());
+      warn("Command was interrupted: " + commandLine + "\ninterruption message ->" + e.getMessage());
     } catch (Exception e) {
-      System.out.println("Failed to execute: " + commandLine);
-      System.out.println(e.getMessage());
+      error("Command failed: " + commandLine + "\nerror message ->" + e.getMessage());
     }
   }
 
@@ -93,7 +94,7 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
         }
 
       } catch (Throwable e) {
-        System.out.println("Failed to get pid: " + e.getMessage());
+        info("Failed to get pid for task because: " + e.getMessage());
       }
     }
 

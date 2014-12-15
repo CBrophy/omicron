@@ -10,6 +10,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
+import org.joda.time.LocalDateTime;
 
 import java.util.HashMap;
 import java.util.List;
@@ -202,6 +203,17 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
     return lineNumber;
   }
 
+  public boolean timeInSchedule(final LocalDateTime localDateTime){
+    checkNotNull(localDateTime, "localDateTime");
+
+    // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert it to 0
+    return getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
+      && getMonths().contains(localDateTime.getMonthOfYear())
+      && getDays().contains(localDateTime.getDayOfMonth())
+      && getHours().contains(localDateTime.getHourOfDay())
+      && getMinutes().contains(localDateTime.getMinuteOfHour());
+  }
+
   @Override
   public int hashCode(){
     return this.rawExpression.hashCode();
@@ -221,6 +233,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
   @Override
   public int compareTo(CrontabExpression o) {
     checkNotNull(o, "comparing null to CrontabExpression instance");
+
     return ComparisonChain.start()
       .compare(this.lineNumber, o.lineNumber)
       .compare(this.rawExpression, o.rawExpression)

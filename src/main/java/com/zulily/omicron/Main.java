@@ -1,7 +1,6 @@
 package com.zulily.omicron;
 
 import com.google.common.base.Throwables;
-import com.zulily.omicron.crontab.CrontabLoader;
 
 import java.io.File;
 
@@ -20,9 +19,8 @@ public class Main {
     checkArgument(Utils.fileExistsAndCanRead(configFile), "Cannot find config file: %s", configFile.getAbsolutePath());
 
     try {
-      Configuration configuration = new Configuration(configFile);
 
-      TaskManager taskManager = new TaskManager(configuration, CrontabLoader.load(configuration));
+      TaskManager taskManager = new TaskManager(new Configuration(configFile));
 
       taskManager.run();
 

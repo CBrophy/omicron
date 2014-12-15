@@ -10,15 +10,15 @@ import java.util.LinkedList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class ScheduledTask implements Runnable {
+public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
   private final CrontabExpression crontabExpression;
   private final String commandLine;
   private final String executingUser;
-  private final int lineNumber;
   private final Configuration configuration;
+
+  private boolean active = true;
 
   // These stats are going to be read by the parent thread for notification
   // and logging, so they need to have a level of concurrency protection
@@ -42,19 +42,17 @@ public class ScheduledTask implements Runnable {
 
   public ScheduledTask(final CrontabExpression crontabExpression,
                        final String commandLine,
-                       final int lineNumber,
                        final Configuration configuration) {
     this.crontabExpression = checkNotNull(crontabExpression, "crontabExpression");
     this.commandLine = checkNotNull(commandLine, "commandLine");
-    checkArgument(lineNumber > -1, "lineNumber must be positive: %s", lineNumber);
-    this.lineNumber = lineNumber;
     this.configuration = checkNotNull(configuration, "configuration");
     this.executingUser = crontabExpression.getExecutingUser();
   }
 
   public boolean shouldRunNow(final LocalDateTime localDateTime) {
 
-    return crontabExpression.getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
+    return isActive()
+      && crontabExpression.getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
       && crontabExpression.getMonths().contains(localDateTime.getMonthOfYear())
       && crontabExpression.getDays().contains(localDateTime.getDayOfMonth())
       && crontabExpression.getHours().contains(localDateTime.getHourOfDay())
@@ -200,18 +198,49 @@ public class ScheduledTask implements Runnable {
     return averageCriticalFailureDurationMilliseconds.get();
   }
 
-  public int getLineNumber() {
-    return lineNumber;
-  }
-
   public int getSkippedExecutionCount() {
     return skippedExecutionCount.get();
   }
 
   public int getExecutionCount() { return executionCount.get(); }
 
+  boolean isActive() {
+    return active;
+  }
+
+  void setActive(boolean active) {
+    this.active = active;
+  }
+
+  public boolean isRunning(){
+    return this.runningTasks.size() > 0;
+  }
+
   private static long rollAverage(final long currentAverage, final long newValue, final int n) {
     return (newValue + ((n - 1) * currentAverage)) / n;
+  }
+
+  @Override
+  public int compareTo(ScheduledTask o) {
+    checkNotNull(o, "scheduledTask Compare");
+
+    return this.crontabExpression.compareTo(o.crontabExpression);
+  }
+
+  @Override
+  public int hashCode(){
+    return this.crontabExpression.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object o){
+    return o instanceof ScheduledTask
+      && this.crontabExpression.equals(((ScheduledTask) o).crontabExpression);
+  }
+
+  @Override
+  public String toString(){
+    return this.crontabExpression.toString();
   }
 
 }

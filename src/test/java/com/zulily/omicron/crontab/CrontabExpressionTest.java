@@ -19,11 +19,11 @@ public class CrontabExpressionTest {
     String testLine4 = "0-31 * * * *   root    cd / && run-parts --report /etc/cron.hourly";
     String testLine5 = "0-10,20-30 * * * *   root    cd / && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
-    CrontabExpression expression2 = new CrontabExpression(testLine2);
-    CrontabExpression expression3 = new CrontabExpression(testLine3);
-    CrontabExpression expression4 = new CrontabExpression(testLine4);
-    CrontabExpression expression5 = new CrontabExpression(testLine5);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(1,testLine2);
+    CrontabExpression expression3 = new CrontabExpression(1,testLine3);
+    CrontabExpression expression4 = new CrontabExpression(1,testLine4);
+    CrontabExpression expression5 = new CrontabExpression(1,testLine5);
 
     assertTrue(Range.closed(0, 59).containsAll(expression1.getMinutes()) && expression1.getMinutes().size() == 60);
 
@@ -54,11 +54,11 @@ public class CrontabExpressionTest {
     String testLine4 = "* 0-15 * * *   root    cd / && run-parts --report /etc/cron.hourly";
     String testLine5 = "* 1-3,5-9 * * *   root    cd / && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
-    CrontabExpression expression2 = new CrontabExpression(testLine2);
-    CrontabExpression expression3 = new CrontabExpression(testLine3);
-    CrontabExpression expression4 = new CrontabExpression(testLine4);
-    CrontabExpression expression5 = new CrontabExpression(testLine5);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(1,testLine2);
+    CrontabExpression expression3 = new CrontabExpression(1,testLine3);
+    CrontabExpression expression4 = new CrontabExpression(1,testLine4);
+    CrontabExpression expression5 = new CrontabExpression(1,testLine5);
 
     assertTrue(Range.closed(0, 23).containsAll(expression1.getHours()) && expression1.getHours().size() == 24);
 
@@ -86,11 +86,11 @@ public class CrontabExpressionTest {
     String testLine4 = "* * 1-15 * *  root    cd / && run-parts --report /etc/cron.hourly";
     String testLine5 = "* * 1-12,14-25 * *  root    cd / && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
-    CrontabExpression expression2 = new CrontabExpression(testLine2);
-    CrontabExpression expression3 = new CrontabExpression(testLine3);
-    CrontabExpression expression4 = new CrontabExpression(testLine4);
-    CrontabExpression expression5 = new CrontabExpression(testLine5);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(1,testLine2);
+    CrontabExpression expression3 = new CrontabExpression(1,testLine3);
+    CrontabExpression expression4 = new CrontabExpression(1,testLine4);
+    CrontabExpression expression5 = new CrontabExpression(1,testLine5);
 
     assertTrue(Range.closed(1, 31).containsAll(expression1.getDays()) && expression1.getDays().size() == 31);
 
@@ -119,11 +119,11 @@ public class CrontabExpressionTest {
     String testLine4 = "* * * 1-9 *  root    cd / && run-parts --report /etc/cron.hourly";
     String testLine5 = "* * * jan-may,jul-nov *  root    cd / && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
-    CrontabExpression expression2 = new CrontabExpression(testLine2);
-    CrontabExpression expression3 = new CrontabExpression(testLine3);
-    CrontabExpression expression4 = new CrontabExpression(testLine4);
-    CrontabExpression expression5 = new CrontabExpression(testLine5);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(1,testLine2);
+    CrontabExpression expression3 = new CrontabExpression(1,testLine3);
+    CrontabExpression expression4 = new CrontabExpression(1,testLine4);
+    CrontabExpression expression5 = new CrontabExpression(1,testLine5);
 
     assertTrue(Range.closed(1, 12).containsAll(expression1.getMonths()) && expression1.getMonths().size() == 12);
 
@@ -157,11 +157,11 @@ public class CrontabExpressionTest {
     String testLine4 = "* * * * 2-6  root    cd / && run-parts --report /etc/cron.hourly";
     String testLine5 = "* * * * sun-tue,thu-sat  root    cd / && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
-    CrontabExpression expression2 = new CrontabExpression(testLine2);
-    CrontabExpression expression3 = new CrontabExpression(testLine3);
-    CrontabExpression expression4 = new CrontabExpression(testLine4);
-    CrontabExpression expression5 = new CrontabExpression(testLine5);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(1,testLine2);
+    CrontabExpression expression3 = new CrontabExpression(1,testLine3);
+    CrontabExpression expression4 = new CrontabExpression(1,testLine4);
+    CrontabExpression expression5 = new CrontabExpression(1,testLine5);
 
     assertTrue(Range.closed(0, 6).containsAll(expression1.getDaysOfWeek()) && expression1.getDaysOfWeek().size() == 7);
 
@@ -187,7 +187,7 @@ public class CrontabExpressionTest {
   @Test
   public void testExecutingUser() {
     String testLine1 = "* * * * *  root    cd / && run-parts --report /etc/cron.hourly";
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
 
     assertEquals("root", expression1.getExecutingUser());
   }
@@ -195,7 +195,7 @@ public class CrontabExpressionTest {
   @Test
   public void testCommand() {
     String testLine1 = "* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
-    CrontabExpression expression1 = new CrontabExpression(testLine1);
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
 
     assertEquals("cd / && run-parts --report /etc/cron.hourly", expression1.getCommand());
   }

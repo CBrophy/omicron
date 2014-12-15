@@ -3,13 +3,13 @@ package com.zulily.omicron.crontab;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
-import com.google.common.primitives.Ints;
 
 import java.util.HashMap;
 import java.util.List;
@@ -36,74 +36,25 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * # |  |  |  |  |
  * # *  *  *  *  * user-name  command to be executed
  */
-public class CrontabExpression {
-  public static final Splitter CRON_SPLITTER = Splitter.on(CharMatcher.WHITESPACE).trimResults().omitEmptyStrings();
+public class CrontabExpression implements Comparable<CrontabExpression> {
+  private static final Splitter CRON_SPLITTER = Splitter.on(CharMatcher.WHITESPACE).trimResults().omitEmptyStrings();
   private static final Splitter COMMA_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
   private static final Splitter FORWARD_SLASH_SPLITTER = Splitter.on('/').trimResults().omitEmptyStrings();
   private static final Splitter HYPHEN_SPLITTER = Splitter.on('-').trimResults().omitEmptyStrings();
 
-  private static enum ExpressionPart {
-    Minutes(Range.closed(0, 59)),
-    Hours(Range.closed(0, 23)),
-    DaysOfMonth(Range.closed(1, 31)),
-    Months(Range.closed(1, 12), new String[]{"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"}),
-    DaysOfWeek(Range.closed(0, 6), new String[]{"sun", "mon", "tue", "wed", "thu", "fri", "sat"}),
-    ExecutingUser,
-    Command;
 
-    private final Range<Integer> expressionRange;
-    private final ImmutableMap<String, Integer> stringNameMap;
-
-    private ExpressionPart() {
-      this(null, null);
-    }
-
-    private ExpressionPart(final Range<Integer> expressionRange) {
-      this(expressionRange, null);
-    }
-
-    private ExpressionPart(final Range<Integer> expressionRange, final String[] stringValues) {
-      this.expressionRange = expressionRange;
-
-      HashMap<String, Integer> stringValuesMap = Maps.newHashMap();
-
-      if (stringValues != null && expressionRange != null) {
-        for (int index = 0; index < stringValues.length; index++) {
-          stringValuesMap.put(stringValues[index], index + expressionRange.lowerEndpoint()); // correct for 1-based month
-        }
-      }
-
-      this.stringNameMap = ImmutableMap.copyOf(stringValuesMap);
-    }
-
-
-    Range<Integer> getExpressionRange() {
-      return expressionRange;
-    }
-
-    Integer stringValueToInt(final String value) {
-      Integer intValue = Ints.tryParse(value);
-
-      if (intValue == null && stringNameMap != null) {
-        intValue = stringNameMap.get(value.toLowerCase());
-      }
-
-      return intValue;
-    }
-
-
-  }
 
   private final String rawExpression;
-
+  private final int lineNumber;
   private final String executingUser;
   private final String command;
 
   private final ImmutableMap<ExpressionPart, ImmutableSortedSet<Integer>> expressionRuntimes;
 
-  public CrontabExpression(final String rawExpression) {
+  public CrontabExpression(final int lineNumber, final String rawExpression) {
     checkNotNull(rawExpression, "rawExpression");
-
+    checkArgument(lineNumber > 0, "lineNumber should be positive");
+    this.lineNumber = lineNumber;
     this.rawExpression = rawExpression.trim();
 
     checkArgument(!this.rawExpression.isEmpty(), "empty expression");
@@ -189,7 +140,7 @@ public class CrontabExpression {
           rangeStartInteger = 0;
         }
 
-        checkArgument(allowedRange.contains(rangeStartInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.expressionRange, expression);
+        checkArgument(allowedRange.contains(rangeStartInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.getExpressionRange(), expression);
 
         rangeStart = rangeStartInteger;
 
@@ -204,7 +155,7 @@ public class CrontabExpression {
             rangeEndInteger = 0;
           }
 
-          checkArgument(allowedRange.contains(rangeEndInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.expressionRange, expression);
+          checkArgument(allowedRange.contains(rangeEndInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.getExpressionRange(), expression);
 
           rangeEnd = rangeEndInteger;
 
@@ -246,4 +197,34 @@ public class CrontabExpression {
   public String getExecutingUser() {return this.executingUser;}
 
   public String getCommand() {return this.command;}
+
+  public int getLineNumber() {
+    return lineNumber;
+  }
+
+  @Override
+  public int hashCode(){
+    return this.rawExpression.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object o){
+    return o instanceof CrontabExpression
+      && this.rawExpression.equalsIgnoreCase(((CrontabExpression) o).rawExpression);
+  }
+
+  @Override
+  public String toString(){
+    return String.valueOf(this.lineNumber) + ": " + this.rawExpression;
+  }
+
+  @Override
+  public int compareTo(CrontabExpression o) {
+    checkNotNull(o, "comparing null to CrontabExpression instance");
+    return ComparisonChain.start()
+      .compare(this.lineNumber, o.lineNumber)
+      .compare(this.rawExpression, o.rawExpression)
+      .result();
+  }
+
 }

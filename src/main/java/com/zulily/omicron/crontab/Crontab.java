@@ -4,34 +4,44 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.Files;
 import com.zulily.omicron.Configuration;
-import com.zulily.omicron.ScheduledTask;
 import com.zulily.omicron.Utils;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-public final class CrontabLoader {
+public final class Crontab {
+  private final ImmutableSet<CrontabExpression> crontabExpressions;
+  private final ImmutableMap<String, String> variables;
+  private final int badRowCount;
+  private final long lastModified;
 
-  public static ImmutableMap<String, ScheduledTask> load(final Configuration configuration){
+  public Crontab(final Configuration configuration){
+
     checkNotNull(configuration, "configuration");
     checkState(Utils.fileExistsAndCanRead(configuration.getCrontab()), "Cannot read/find crontab: ", configuration.getCrontab().getAbsolutePath());
 
-    HashMap<String, ScheduledTask> results = Maps.newHashMap();
+    HashMap<String, String> variableMap = Maps.newHashMap();
+    HashSet<CrontabExpression> results  = Sets.newHashSet();
+
+    int bad = 0;
+
+    this.lastModified = configuration.getCrontab().lastModified();
 
     try {
       int lineNumber = 0;
-      ImmutableList<String> lines = Files.asCharSource(configuration.getCrontab(), Charset.defaultCharset()).readLines();
 
-      HashMap<String, String> variableMap = Maps.newHashMap();
+      ImmutableList<String> lines = Files.asCharSource(configuration.getCrontab(), Charset.defaultCharset()).readLines();
 
       for (String line : lines) {
         lineNumber++;
@@ -52,15 +62,10 @@ public final class CrontabLoader {
 
         try {
 
-          CrontabExpression crontabExpression = new CrontabExpression(trimmed);
-
-          String substitutedCommand = substituteVariables(crontabExpression.getCommand(), variableMap);
-
-          ScheduledTask scheduledTask = new ScheduledTask(crontabExpression, substitutedCommand, lineNumber, configuration);
-
-          results.put(String.valueOf(lineNumber), scheduledTask);
+          results.add(new CrontabExpression(lineNumber, trimmed));
 
         } catch (Exception e){
+          bad++;
           System.out.println(String.format("[Line: %s] Failed to read crontab entry: %s", lineNumber, trimmed));
         }
 
@@ -70,16 +75,11 @@ public final class CrontabLoader {
       throw Throwables.propagate(e);
     }
 
-    return ImmutableMap.copyOf(results);
+    this.badRowCount = bad;
+    this.variables = ImmutableMap.copyOf(variableMap);
+    this.crontabExpressions = ImmutableSet.copyOf(results);
   }
 
-  private static String substituteVariables(final String line, final HashMap<String, String> variableMap){
-    String substituted = line;
-    for (Map.Entry<String, String> variableEntry : variableMap.entrySet()) {
-       substituted = substituted.replace(variableEntry.getKey(), variableEntry.getValue());
-    }
-    return substituted;
-  }
 
   private static  List<String> getVariable(final String line){
     int firstEqualIndex = line.indexOf('=');
@@ -112,5 +112,21 @@ public final class CrontabLoader {
     }
 
     return ImmutableList.of("$" + varName, varValue);
+  }
+
+  public ImmutableSet<CrontabExpression> getCrontabExpressions() {
+    return crontabExpressions;
+  }
+
+  public int getBadRowCount() {
+    return badRowCount;
+  }
+
+  public long getLastModified() {
+    return lastModified;
+  }
+
+  public ImmutableMap<String, String> getVariables() {
+    return variables;
   }
 }

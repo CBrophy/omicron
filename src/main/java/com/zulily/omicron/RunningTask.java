@@ -21,8 +21,8 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
 
   // These values are read by the parent thread to track execution
   private AtomicLong startTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
-  private AtomicLong endTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
-  private AtomicInteger returnCode = new AtomicInteger(-1);
+  private AtomicLong endTimeMilliseconds = new AtomicLong(-1L);
+  private AtomicInteger returnCode = new AtomicInteger(255);
   private AtomicLong pid = new AtomicLong(-1L);
 
   public RunningTask(final String commandLine, final String executingUser) {
@@ -50,9 +50,9 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
       this.endTimeMilliseconds.set(DateTime.now().getMillis());
 
     } catch (InterruptedException e) {
-      warn("Command was interrupted: " + commandLine + "\ninterruption message ->" + e.getMessage());
+      warn("Command was interrupted: {0}\ninterruption reason-> {1}",commandLine, e.getMessage());
     } catch (Exception e) {
-      error("Command failed: " + commandLine + "\nerror message ->" + e.getMessage());
+      error("Command failed: {0}\nerror message-> ", commandLine, e.getMessage());
     }
   }
 
@@ -94,7 +94,7 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
         }
 
       } catch (Throwable e) {
-        info("Failed to get pid for task because: " + e.getMessage());
+        info("Failed to get pid for task because: {0}", e.getMessage());
       }
     }
 

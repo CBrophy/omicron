@@ -67,7 +67,7 @@ public final class Crontab {
 
         } catch (Exception e){
           bad++;
-          error(String.format("[Line: %s] Failed to read crontab entry: %s", lineNumber, trimmed));
+          error("[Line: {0}] Failed to read crontab entry: {1}\n{2}", String.valueOf(lineNumber), trimmed, Throwables.getStackTraceAsString(e));
         }
 
       }

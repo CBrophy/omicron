@@ -17,10 +17,12 @@ public class TimeSinceLastSuccess implements Policy {
 
   @Override
   public boolean evaluate(ScheduledTask scheduledTask) {
-    boolean result = DateTime.now().getMillis() - scheduledTask.getLastSuccessTimestamp() <= configuration.getSlaMinMillisSinceSuccess();
+    long baseTimestamp = scheduledTask.getLastSuccessTimestamp() > 0L ? scheduledTask.getLastSuccessTimestamp() : scheduledTask.getFirstExecutionTimestamp();
+
+    boolean result = DateTime.now().getMillis() - baseTimestamp <= configuration.getSlaMinMillisSinceSuccess();
 
     if (!result) {
-      info(String.format("%s failed %s: last success at %s", scheduledTask.toString(), getName(), (new LocalDateTime(scheduledTask.getLastSuccessTimestamp(), configuration.getChronology())).toString("yyyyMMdd HH:mm:ss")));
+      info("{0} failed {1}: last success at {2}", scheduledTask.toString(), getName(), (new LocalDateTime(scheduledTask.getLastSuccessTimestamp(), configuration.getChronology())).toString());
     }
 
     return result;

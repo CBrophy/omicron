@@ -35,7 +35,7 @@ public class Configuration {
     AlertSmtpPort("alert.smtp.port", "25"),
     TaskDuplicateAllowedCount("task.duplicate.allowed.count", "2"),
     TaskReturnCodeCriticalFailureThreshold("task.return.code.critical.failure.threshold", "100"), // must be between 0 and 255
-    SLAMinMillisSinceSuccess("sla.min.milliseconds.since.success", String.valueOf(TimeUnit.HOURS.toMillis(1))), // must be between 0 and 255
+    SLAMinMillisSinceSuccess("sla.min.milliseconds.since.success", String.valueOf(TimeUnit.HOURS.toMillis(1))),
     TimeZone("timezone", "UTC"),
     Unknown("", "");
 
@@ -105,14 +105,12 @@ public class Configuration {
   }
 
   private void printConfig() {
-    info("Loaded config:");
-
     for (ConfigKey configKey : ConfigKey.values()) {
       if (configKey == ConfigKey.Unknown) {
         continue;
       }
 
-      info(String.format("%s = %s", configKey.rawName, getConfigValue(configKey)));
+      info("{0} = {1}", configKey.rawName, getConfigValue(configKey));
     }
 
   }
@@ -153,7 +151,7 @@ public class Configuration {
 
         if (configLineParts.size() != 2) {
 
-          warn("Skipping malformed config line: " + trimmed);
+          warn("Skipping malformed config line: {0}", trimmed);
           continue;
 
         }
@@ -162,7 +160,7 @@ public class Configuration {
 
         if (configKey == ConfigKey.Unknown) {
 
-          warn("Skipping unknown config param: " + trimmed);
+          warn("Skipping unknown config param: {0}", trimmed);
           continue;
 
         }

@@ -5,6 +5,7 @@ import com.google.common.base.Throwables;
 import java.io.File;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.zulily.omicron.Utils.error;
 
 public class Main {
@@ -14,6 +15,13 @@ public class Main {
       printHelp();
       System.exit(0);
     }
+
+    checkState("root".equals(System.getProperty("user.name")), "Omicron must run as root to launch processes as another user");
+
+    // see doc for java.util.logging.SimpleFormatter
+    // format output will look like:
+    // [Tue Dec 16 10:29:07 PST 2014] INFO: <message>
+    System.setProperty("java.util.logging.SimpleFormatter.format","[%1$tc] %4$s: %5$s %n");
 
     File configFile = new File(args.length > 0 ? args[0].trim() : "/etc/omicron/omicron.conf");
 
@@ -27,14 +35,14 @@ public class Main {
 
       System.exit(0);
     } catch (Exception e) {
-      error("Caught exception in primary thread:\n\n" + Throwables.getStackTraceAsString(e));
+      error("Caught exception in primary thread:\n{0}\n", Throwables.getStackTraceAsString(e));
       System.exit(1);
     }
 
   }
 
   private static void printHelp() {
-    System.out.println("OMICRON - A drop-in replacement for vanilla cron");
+    System.out.println("OMICRON - A drop-in replacement for vanilla cron on most unix systems");
     System.out.println("usage: java -jar omicron.jar <omicron config path: defaults to /etc/omicron/omicron.conf>");
   }
 }

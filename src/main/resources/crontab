@@ -1,4 +1,9 @@
+ 
 
 * * * * * root echo "every minute"
-*/2 * * * root echo "every two minutes"
-*/5 * * * root echo "every five minutes"
+*/2 * * * * root echo "every two minutes"
+*/5 * * * * root echo "every five minutes"
+*/3 * * * * root echo "every three minutes"
+*/2 * * * * root echo "every two minutes and pause" & sleep 360
+*/2 * * * * root echo "every two minutes and fail" & exit 120
+

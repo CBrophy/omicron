@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 
 import com.zulily.omicron.crontab.CrontabExpression;
 
+import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import java.util.LinkedList;
@@ -14,7 +15,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
-public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
+public class ScheduledTask implements Comparable<ScheduledTask> {
   private final CrontabExpression crontabExpression;
   private final String commandLine;
   private final String executingUser;
@@ -30,6 +31,7 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
   private AtomicInteger executionCount = new AtomicInteger(0);
   private AtomicInteger skippedExecutionCount = new AtomicInteger(0);
 
+  private AtomicLong firstExecutionTimestamp = new AtomicLong(0L);
   private AtomicLong lastSuccessTimestamp = new AtomicLong(0L);
   private AtomicLong lastExecutionTimestamp = new AtomicLong(0L);
 
@@ -56,12 +58,12 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
     if(crontabExpression.timeInSchedule(localDateTime)){
 
       if(!isActive()){
-        info(String.format("%s skipped execution because it is inactive", commandLine));
+        info("{0} skipped execution because it is inactive", commandLine);
         return false;
       }
 
       if(runningTasks.size() >= configuration.getTaskDuplicateAllowedCount()) {
-        warn(String.format("%s skipped execution because there are already %s running", commandLine, runningTasks.size()));
+        warn("{0} skipped execution because there are already {1} running", commandLine, String.valueOf(runningTasks.size()));
         return false;
       }
 
@@ -72,7 +74,6 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
     return false;
   }
 
-  @Override
   public void run() {
     final LocalDateTime localDateTime = LocalDateTime.now(configuration.getChronology());
 
@@ -83,7 +84,11 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
 
       this.executionCount.getAndIncrement();
 
-      info(String.format("[scheduled@%s] Executing: %s", localDateTime.toString("yyyyMMdd HH:mm"), commandLine));
+      if(this.firstExecutionTimestamp.get() == 0L){
+        this.firstExecutionTimestamp.set(DateTime.now().getMillis());
+      }
+
+      info("[scheduled@{0}] Executing: {1}", localDateTime.toString("yyyyMMdd HH:mm"), commandLine);
 
       RunningTask runningTask = new RunningTask(commandLine, executingUser);
 
@@ -160,6 +165,7 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
             this.totalCriticalFailureCount.incrementAndGet()
           ));
 
+          info("Scheduled task critical failure detected: {0}", this.toString());
         }
 
       }
@@ -214,6 +220,10 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
 
   public int getExecutionCount() { return executionCount.get(); }
 
+  public long getFirstExecutionTimestamp(){
+    return firstExecutionTimestamp.get();
+  }
+
   boolean isActive() {
     return active;
   }
@@ -252,5 +262,4 @@ public class ScheduledTask implements Runnable, Comparable<ScheduledTask> {
   public String toString(){
     return this.crontabExpression.toString();
   }
-
 }

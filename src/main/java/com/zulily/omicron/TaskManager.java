@@ -2,6 +2,7 @@ package com.zulily.omicron;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.zulily.omicron.crontab.Crontab;
 import com.zulily.omicron.crontab.CrontabExpression;
@@ -9,6 +10,7 @@ import com.zulily.omicron.sla.Policy;
 import com.zulily.omicron.sla.TimeSinceLastSuccess;
 import org.joda.time.DateTime;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +24,7 @@ public class TaskManager {
   private final ImmutableList<Policy> slaPolicies;
   private final Configuration configuration;
   private HashSet<ScheduledTask> scheduledTaskSet = Sets.newHashSet();
+  private ArrayList<ScheduledTask> retiredScheduledTasks = Lists.newArrayList();
 
 
   public TaskManager(final Configuration configuration) {
@@ -39,7 +42,7 @@ public class TaskManager {
 
     // Optimistically assume that we'll be running on the
     // next calendar minute
-    long executeMinute = getCurrentExecuteMinute() + 1;
+    long executeMinute = getCurrentExecuteMinute() + TimeUnit.MINUTES.toMillis(1);
 
     Crontab crontab = null;
 
@@ -63,9 +66,8 @@ public class TaskManager {
             warn("Bad rows found in crontab! See error log for details");
           }
 
-          updateScheduledTasks(crontab);
+          consumeCronChanges(crontab);
         }
-
 
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
 
@@ -73,11 +75,11 @@ public class TaskManager {
       }
 
       if(currentExecuteMinute != executeMinute){
-        warn("Scheduled tasks may have been missed due to missed minute target " + executeMinute);
+        warn("Scheduled tasks may have been missed due to missed minute target {0}", String.valueOf(executeMinute));
       }
 
       // Schedule re-evaluation in the next calendar minute
-      executeMinute = getCurrentExecuteMinute() + 1;
+      executeMinute = getCurrentExecuteMinute() + TimeUnit.MINUTES.toMillis(1);
 
       try {
 
@@ -87,31 +89,20 @@ public class TaskManager {
           scheduledTask.run();
         }
 
-        info(String.format("Task evaluation took %s ms", DateTime.now().getMillis() - taskEvaluationStartMs));
+        info("Task evaluation took {0} ms", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs));
 
-        for (ScheduledTask scheduledTask : scheduledTaskSet) {
+        checkTaskPolicies();
 
-          if(scheduledTask.isActive()){
-            continue;
-          }
-
-          for (Policy slaPolicy : slaPolicies) {
-            if(slaPolicy.enabled()){
-              slaPolicy.evaluate(scheduledTask);
-            }
-          }
-
-        }
-
+        retireOldTasks();
 
       } catch (Exception e) {
-        error("Task evaluation exception\n" + Throwables.getStackTraceAsString(e));
+        error("Task evaluation exception\n{0}",Throwables.getStackTraceAsString(e));
       }
     }
 
   }
 
-  private void updateScheduledTasks(final Crontab crontab) {
+  private void consumeCronChanges(final Crontab crontab) {
     info("Reading crontab...");
 
     HashSet<ScheduledTask> result = Sets.newHashSet();
@@ -132,17 +123,17 @@ public class TaskManager {
     // reconfigured
     Sets.SetView<ScheduledTask> oldScheduledTasks = Sets.difference(scheduledTaskSet, scheduledTaskUpdates);
 
-    info(String.format("CRON UPDATE: %s tasks no longer scheduled or out of date", oldScheduledTasks.size()));
+    info("CRON UPDATE: {0} tasks no longer scheduled or out of date", String.valueOf(oldScheduledTasks.size()));
 
     // This is a view of scheduled tasks that will not be updated by the cron reload
     Sets.SetView<ScheduledTask> existingScheduledTasks = Sets.intersection(scheduledTaskSet, scheduledTaskUpdates);
 
-    info(String.format("CRON UPDATE: %s tasks unchanged", existingScheduledTasks.size()));
+    info("CRON UPDATE: {0} tasks unchanged", String.valueOf(existingScheduledTasks.size()));
 
     // This is a view of scheduled tasks that are new or have been changed
     Sets.SetView<ScheduledTask> newScheduledTasks = Sets.difference(scheduledTaskUpdates, scheduledTaskSet);
 
-    info(String.format("CRON UPDATE: %s tasks are new or updated", newScheduledTasks.size()));
+    info("CRON UPDATE: {0} tasks are new or updated", String.valueOf(newScheduledTasks.size()));
 
     // Add all new tasks
     // keep references to old tasks that are still running
@@ -152,16 +143,19 @@ public class TaskManager {
     for (ScheduledTask scheduledTask : scheduledTaskSet) {
 
       if(oldScheduledTasks.contains(scheduledTask) && scheduledTask.isRunning()){
+
         scheduledTask.setActive(false);
         result.add(scheduledTask);
+
+        retiredScheduledTasks.add(scheduledTask);
       }
 
       if(existingScheduledTasks.contains(scheduledTask)){
 
         if(!scheduledTask.isActive()){
-          // Did someone re-add something that was running and then removed?
+          // Did someone re-add a task that was running and then removed?
           // For whatever reason, it's now set to run again so just re-activate the instance
-          info(String.format("CRON UPDATE: Reactivating %s", scheduledTask.toString()));
+          info("CRON UPDATE: Reactivating {0}", scheduledTask.toString());
           scheduledTask.setActive(true);
         }
 
@@ -172,6 +166,35 @@ public class TaskManager {
     this.scheduledTaskSet = result;
   }
 
+  private void checkTaskPolicies(){
+    for (ScheduledTask scheduledTask : scheduledTaskSet) {
+
+      if(scheduledTask.isActive()){
+        continue;
+      }
+
+      for (Policy slaPolicy : slaPolicies) {
+        if(slaPolicy.enabled()){
+          slaPolicy.evaluate(scheduledTask);
+        }
+      }
+
+    }
+  }
+
+  private void retireOldTasks(){
+    int retiredTaskCount = retiredScheduledTasks.size() - 1;
+
+    for(int index= retiredTaskCount; index >= 0; index--){
+      ScheduledTask retiredTask = retiredScheduledTasks.get(index);
+
+      if(!retiredTask.isRunning()){
+        info("Retiring inactive task: {0}", retiredTask.toString());
+        retiredScheduledTasks.remove(index);
+        scheduledTaskSet.remove(retiredTask);
+      }
+    }
+  }
 
   private static String substituteVariables(final String line, final Map<String, String> variableMap){
     String substituted = line;

@@ -29,7 +29,7 @@ public class TaskManager {
 
   public TaskManager(final Configuration configuration) {
     this.configuration = checkNotNull(configuration, "configuration");
-    this.slaPolicies = ImmutableList.of((Policy)new TimeSinceLastSuccess(configuration));
+    this.slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess(configuration));
   }
 
   public void run() throws InterruptedException {
@@ -42,27 +42,27 @@ public class TaskManager {
 
     // Optimistically assume that we'll be running on the
     // next calendar minute
-    long executeMinute = getCurrentExecuteMinute() + TimeUnit.MINUTES.toMillis(1);
+    long executeMinute = getMinuteMillisFromNow(1);
 
     Crontab crontab = null;
 
     //noinspection InfiniteLoopStatement
     while (true) {
 
-      long currentExecuteMinute = getCurrentExecuteMinute();
+      long currentExecuteMinute = getMinuteMillisFromNow(0);
 
       // Trigger when the execute minute comes up or is past-due
       // until then watch for crontab changes or sleep
-      while(currentExecuteMinute < executeMinute) {
+      while (currentExecuteMinute < executeMinute) {
 
         // If the crontab has been changed - re-evaluate the scheduled tasks
-        if(configuration.getCrontab().lastModified() != lastModified){
+        if (configuration.getCrontab().lastModified() != lastModified) {
 
           crontab = new Crontab(configuration);
 
           lastModified = crontab.getLastModified();
 
-          if(crontab.getBadRowCount() > 0){
+          if (crontab.getBadRowCount() > 0) {
             warn("Bad rows found in crontab! See error log for details");
           }
 
@@ -71,21 +71,21 @@ public class TaskManager {
 
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
 
-        currentExecuteMinute = getCurrentExecuteMinute();
+        currentExecuteMinute = getMinuteMillisFromNow(0);
       }
 
-      if(currentExecuteMinute != executeMinute){
+      if (currentExecuteMinute != executeMinute) {
         warn("Scheduled tasks may have been missed due to missed minute target {0}", String.valueOf(executeMinute));
       }
 
       // Schedule re-evaluation in the next calendar minute
-      executeMinute = getCurrentExecuteMinute() + TimeUnit.MINUTES.toMillis(1);
+      executeMinute = getMinuteMillisFromNow(1);
 
       try {
 
-        long taskEvaluationStartMs = DateTime.now().getMillis();
+        final long taskEvaluationStartMs = DateTime.now().getMillis();
 
-        for (ScheduledTask scheduledTask : scheduledTaskSet) {
+        for (final ScheduledTask scheduledTask : scheduledTaskSet) {
           scheduledTask.run();
         }
 
@@ -96,7 +96,7 @@ public class TaskManager {
         retireOldTasks();
 
       } catch (Exception e) {
-        error("Task evaluation exception\n{0}",Throwables.getStackTraceAsString(e));
+        error("Task evaluation exception\n{0}", Throwables.getStackTraceAsString(e));
       }
     }
 
@@ -105,13 +105,13 @@ public class TaskManager {
   private void consumeCronChanges(final Crontab crontab) {
     info("Reading crontab...");
 
-    HashSet<ScheduledTask> result = Sets.newHashSet();
+    final HashSet<ScheduledTask> result = Sets.newHashSet();
 
-    HashSet<ScheduledTask> scheduledTaskUpdates = Sets.newHashSet();
+    final HashSet<ScheduledTask> scheduledTaskUpdates = Sets.newHashSet();
 
-    for (CrontabExpression crontabExpression : crontab.getCrontabExpressions()) {
+    for (final CrontabExpression crontabExpression : crontab.getCrontabExpressions()) {
 
-      ScheduledTask scheduledTask = new ScheduledTask(
+      final ScheduledTask scheduledTask = new ScheduledTask(
         crontabExpression,
         substituteVariables(crontabExpression.getCommand(), crontab.getVariables()),
         configuration);
@@ -121,17 +121,17 @@ public class TaskManager {
 
     // This is a view containing old scheduled tasks that have been removed or
     // reconfigured
-    Sets.SetView<ScheduledTask> oldScheduledTasks = Sets.difference(scheduledTaskSet, scheduledTaskUpdates);
+    final Sets.SetView<ScheduledTask> oldScheduledTasks = Sets.difference(scheduledTaskSet, scheduledTaskUpdates);
 
     info("CRON UPDATE: {0} tasks no longer scheduled or out of date", String.valueOf(oldScheduledTasks.size()));
 
     // This is a view of scheduled tasks that will not be updated by the cron reload
-    Sets.SetView<ScheduledTask> existingScheduledTasks = Sets.intersection(scheduledTaskSet, scheduledTaskUpdates);
+    final Sets.SetView<ScheduledTask> existingScheduledTasks = Sets.intersection(scheduledTaskSet, scheduledTaskUpdates);
 
     info("CRON UPDATE: {0} tasks unchanged", String.valueOf(existingScheduledTasks.size()));
 
     // This is a view of scheduled tasks that are new or have been changed
-    Sets.SetView<ScheduledTask> newScheduledTasks = Sets.difference(scheduledTaskUpdates, scheduledTaskSet);
+    final Sets.SetView<ScheduledTask> newScheduledTasks = Sets.difference(scheduledTaskUpdates, scheduledTaskSet);
 
     info("CRON UPDATE: {0} tasks are new or updated", String.valueOf(newScheduledTasks.size()));
 
@@ -140,9 +140,9 @@ public class TaskManager {
     // and transfer instances that haven't changed
     result.addAll(newScheduledTasks);
 
-    for (ScheduledTask scheduledTask : scheduledTaskSet) {
+    for (final ScheduledTask scheduledTask : scheduledTaskSet) {
 
-      if(oldScheduledTasks.contains(scheduledTask) && scheduledTask.isRunning()){
+      if (oldScheduledTasks.contains(scheduledTask) && scheduledTask.isRunning()) {
 
         scheduledTask.setActive(false);
         result.add(scheduledTask);
@@ -150,9 +150,9 @@ public class TaskManager {
         retiredScheduledTasks.add(scheduledTask);
       }
 
-      if(existingScheduledTasks.contains(scheduledTask)){
+      if (existingScheduledTasks.contains(scheduledTask)) {
 
-        if(!scheduledTask.isActive()){
+        if (!scheduledTask.isActive()) {
           // Did someone re-add a task that was running and then removed?
           // For whatever reason, it's now set to run again so just re-activate the instance
           info("CRON UPDATE: Reactivating {0}", scheduledTask.toString());
@@ -166,15 +166,15 @@ public class TaskManager {
     this.scheduledTaskSet = result;
   }
 
-  private void checkTaskPolicies(){
-    for (ScheduledTask scheduledTask : scheduledTaskSet) {
+  private void checkTaskPolicies() {
+    for (final ScheduledTask scheduledTask : scheduledTaskSet) {
 
-      if(scheduledTask.isActive()){
+      if (scheduledTask.isActive()) {
         continue;
       }
 
-      for (Policy slaPolicy : slaPolicies) {
-        if(slaPolicy.enabled()){
+      for (final Policy slaPolicy : slaPolicies) {
+        if (slaPolicy.enabled()) {
           slaPolicy.evaluate(scheduledTask);
         }
       }
@@ -182,13 +182,13 @@ public class TaskManager {
     }
   }
 
-  private void retireOldTasks(){
-    int retiredTaskCount = retiredScheduledTasks.size() - 1;
+  private void retireOldTasks() {
+    final int retiredTaskCount = retiredScheduledTasks.size() - 1;
 
-    for(int index= retiredTaskCount; index >= 0; index--){
-      ScheduledTask retiredTask = retiredScheduledTasks.get(index);
+    for (int index = retiredTaskCount; index >= 0; index--) {
+      final ScheduledTask retiredTask = retiredScheduledTasks.get(index);
 
-      if(!retiredTask.isRunning()){
+      if (!retiredTask.isRunning()) {
         info("Retiring inactive task: {0}", retiredTask.toString());
         retiredScheduledTasks.remove(index);
         scheduledTaskSet.remove(retiredTask);
@@ -196,16 +196,18 @@ public class TaskManager {
     }
   }
 
-  private static String substituteVariables(final String line, final Map<String, String> variableMap){
+  private static String substituteVariables(final String line, final Map<String, String> variableMap) {
     String substituted = line;
-    for (Map.Entry<String, String> variableEntry : variableMap.entrySet()) {
+
+    for (final Map.Entry<String, String> variableEntry : variableMap.entrySet()) {
       substituted = substituted.replace(variableEntry.getKey(), variableEntry.getValue());
     }
+
     return substituted;
   }
 
-  private static long getCurrentExecuteMinute(){
-    return DateTime.now().withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
+  private static long getMinuteMillisFromNow(final int minuteIncrement) {
+    return DateTime.now().plusMinutes(minuteIncrement).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
   }
 
 }

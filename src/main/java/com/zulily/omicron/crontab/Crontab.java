@@ -27,13 +27,13 @@ public final class Crontab {
   private final int badRowCount;
   private final long lastModified;
 
-  public Crontab(final Configuration configuration){
+  public Crontab(final Configuration configuration) {
 
     checkNotNull(configuration, "configuration");
     checkState(Utils.fileExistsAndCanRead(configuration.getCrontab()), "Cannot read/find crontab: ", configuration.getCrontab().getAbsolutePath());
 
     HashMap<String, String> variableMap = Maps.newHashMap();
-    HashSet<CrontabExpression> results  = Sets.newHashSet();
+    HashSet<CrontabExpression> results = Sets.newHashSet();
 
     int bad = 0;
 
@@ -42,21 +42,22 @@ public final class Crontab {
     try {
       int lineNumber = 0;
 
-      ImmutableList<String> lines = Files.asCharSource(configuration.getCrontab(), Charset.defaultCharset()).readLines();
+      final ImmutableList<String> lines = Files.asCharSource(configuration.getCrontab(), Charset.defaultCharset()).readLines();
 
-      for (String line : lines) {
+      for (final String line : lines) {
         lineNumber++;
-        String trimmed = line.trim();
+
+        final String trimmed = line.trim();
 
         // Skip commented lines
-        if(trimmed.isEmpty() || '#' == trimmed.charAt(0)){
+        if (trimmed.isEmpty() || '#' == trimmed.charAt(0)) {
           continue;
         }
 
         // If it's a variable assignment, save it in the map
-        List<String> variableParts = getVariable(trimmed);
+        final List<String> variableParts = getVariable(trimmed);
 
-        if(variableParts.size() == 2){
+        if (variableParts.size() == 2) {
           variableMap.put(variableParts.get(0), variableParts.get(1));
           continue;
         }
@@ -65,7 +66,7 @@ public final class Crontab {
 
           results.add(new CrontabExpression(lineNumber, trimmed));
 
-        } catch (Exception e){
+        } catch (Exception e) {
           bad++;
           error("[Line: {0}] Failed to read crontab entry: {1}\n{2}", String.valueOf(lineNumber), trimmed, Throwables.getStackTraceAsString(e));
         }
@@ -82,28 +83,28 @@ public final class Crontab {
   }
 
 
-  private static  List<String> getVariable(final String line){
-    int firstEqualIndex = line.indexOf('=');
+  private static List<String> getVariable(final String line) {
+    final int firstEqualIndex = line.indexOf('=');
 
-    if(firstEqualIndex == -1){
+    if (firstEqualIndex == -1) {
       return ImmutableList.of();
     }
 
-    int firstQuoteIndex = line.indexOf('"');
+    final int firstQuoteIndex = line.indexOf('"');
 
-    String varName = line.substring(0,firstEqualIndex);
+    final String varName = line.substring(0, firstEqualIndex);
 
     // Variable names cannot contain whitespace
-    if(CharMatcher.WHITESPACE.matchesAnyOf(varName)){
+    if (CharMatcher.WHITESPACE.matchesAnyOf(varName)) {
       return ImmutableList.of();
     }
 
     String varValue = null;
 
-    if(firstQuoteIndex > -1){
+    if (firstQuoteIndex > -1) {
 
       // If first quote comes before first equal sign, cannot be a var assignment
-      if(firstQuoteIndex < firstEqualIndex){
+      if (firstQuoteIndex < firstEqualIndex) {
         return ImmutableList.of();
       }
 

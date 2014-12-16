@@ -50,7 +50,7 @@ public class Configuration {
     static ConfigKey fromString(final String rawName) {
       if (rawName != null) {
 
-        String trimmed = rawName.trim();
+        final String trimmed = rawName.trim();
 
         for (ConfigKey configKey : ConfigKey.values()) {
 
@@ -78,7 +78,7 @@ public class Configuration {
   Configuration(final File configFile) {
     rawConfigMap = loadConfig(configFile);
 
-    Splitter commaSplitter = Splitter.on(',').trimResults().omitEmptyStrings();
+    final Splitter commaSplitter = Splitter.on(',').trimResults().omitEmptyStrings();
 
     this.crontab = new File(getConfigValue(ConfigKey.CrontabPath));
     this.statsFile = new File(getConfigValue(ConfigKey.StatsFilePath));
@@ -95,7 +95,7 @@ public class Configuration {
     this.taskDuplicateAllowedCount = Math.abs(Integer.parseInt(getConfigValue(ConfigKey.TaskDuplicateAllowedCount)));
     this.taskReturnCodeCriticalFailureThreshold = Math.abs(Integer.parseInt(getConfigValue(ConfigKey.TaskReturnCodeCriticalFailureThreshold)));
 
-    DateTimeZone timeZone = DateTimeZone.forID(getConfigValue(ConfigKey.TimeZone));
+    final DateTimeZone timeZone = DateTimeZone.forID(getConfigValue(ConfigKey.TimeZone));
 
     this.chronology = ISOChronology.getInstance(timeZone);
 
@@ -106,6 +106,7 @@ public class Configuration {
 
   private void printConfig() {
     for (ConfigKey configKey : ConfigKey.values()) {
+
       if (configKey == ConfigKey.Unknown) {
         continue;
       }
@@ -119,7 +120,7 @@ public class Configuration {
   private String getConfigValue(final ConfigKey configKey) {
     checkArgument(configKey != ConfigKey.Unknown, "Cannot get unknown config value");
 
-    String configValue = rawConfigMap.get(configKey);
+    final String configValue = rawConfigMap.get(configKey);
 
     return configValue == null ? configKey.defaultValue : configValue;
   }
@@ -133,21 +134,21 @@ public class Configuration {
       return ImmutableMap.of();
     }
 
-    Splitter equalSplitter = Splitter.on('=').trimResults().omitEmptyStrings();
-    HashMap<ConfigKey, String> config = Maps.newHashMap();
+    final Splitter equalSplitter = Splitter.on('=').trimResults().omitEmptyStrings();
+    final HashMap<ConfigKey, String> config = Maps.newHashMap();
 
     try {
       ImmutableList<String> configLines = Files.asCharSource(configFile, Charset.defaultCharset()).readLines();
 
-      for (String configLine : configLines) {
-        String trimmed = configLine.trim();
+      for (final String configLine : configLines) {
+        final String trimmed = configLine.trim();
 
         //Skip commented/blank lines
         if (trimmed.isEmpty() || '#' == trimmed.charAt(0)) {
           continue;
         }
 
-        List<String> configLineParts = equalSplitter.splitToList(trimmed);
+        final List<String> configLineParts = equalSplitter.splitToList(trimmed);
 
         if (configLineParts.size() != 2) {
 
@@ -156,7 +157,7 @@ public class Configuration {
 
         }
 
-        ConfigKey configKey = ConfigKey.fromString(configLineParts.get(0));
+        final ConfigKey configKey = ConfigKey.fromString(configLineParts.get(0));
 
         if (configKey == ConfigKey.Unknown) {
 

@@ -30,12 +30,14 @@ enum ExpressionPart {
   private ExpressionPart(final Range<Integer> expressionRange, final String[] stringValues) {
     this.expressionRange = expressionRange;
 
-    HashMap<String, Integer> stringValuesMap = Maps.newHashMap();
+    final HashMap<String, Integer> stringValuesMap = Maps.newHashMap();
 
     if (stringValues != null && expressionRange != null) {
+
       for (int index = 0; index < stringValues.length; index++) {
-        stringValuesMap.put(stringValues[index], index + expressionRange.lowerEndpoint()); // correct for 1-based month
+        stringValuesMap.put(stringValues[index], index + expressionRange.lowerEndpoint()); // correct for 1-based month/d-o-m
       }
+
     }
 
     this.stringNameMap = ImmutableMap.copyOf(stringValuesMap);

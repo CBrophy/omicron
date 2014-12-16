@@ -26,8 +26,8 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
   private AtomicLong pid = new AtomicLong(-1L);
 
   public RunningTask(final String commandLine, final String executingUser) {
-    this.commandLine = commandLine;
-    this.executingUser = executingUser;
+    this.commandLine = checkNotNull(commandLine, "commandLine");
+    this.executingUser = checkNotNull(executingUser, "executingUser");
     this.launchTimeMilliseconds = DateTime.now().getMillis();
     this.thread = new Thread(this);
   }
@@ -35,13 +35,13 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
   @Override
   public void run() {
     try {
-      ProcessBuilder processBuilder = new ProcessBuilder("su", "-", executingUser, "-c", commandLine);
+      final ProcessBuilder processBuilder = new ProcessBuilder("su", "-", executingUser, "-c", commandLine);
 
       processBuilder.inheritIO();
 
       this.startTimeMilliseconds.set(DateTime.now().getMillis());
 
-      Process process = processBuilder.start();
+      final Process process = processBuilder.start();
 
       this.pid.set(determinePid(process));
 
@@ -50,9 +50,9 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
       this.endTimeMilliseconds.set(DateTime.now().getMillis());
 
     } catch (InterruptedException e) {
-      warn("Command was interrupted: {0}\ninterruption reason-> {1}",commandLine, e.getMessage());
+      warn("Command was interrupted: {0}\ninterruption reason-> {1}", commandLine, e.getMessage());
     } catch (Exception e) {
-      error("Command failed: {0}\nerror message-> ", commandLine, e.getMessage());
+      error("Command failed: {0}\nerror message-> {1}", commandLine, e.getMessage());
     }
   }
 
@@ -71,17 +71,17 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
     */
 
 
-    Class<? extends Process> processClass = process.getClass();
+    final Class<? extends Process> processClass = process.getClass();
 
     if (processClass.getName().equals("java.lang.UNIXProcess")) {
 
       try {
 
-        Field pidField = processClass.getDeclaredField("pid");
+        final Field pidField = processClass.getDeclaredField("pid");
 
         pidField.setAccessible(true);
 
-        Object pidValue = pidField.get(process);
+        final Object pidValue = pidField.get(process);
 
         if (pidValue instanceof Integer) {
 
@@ -124,7 +124,7 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
   }
 
   @Override
-  public int hashCode(){
+  public int hashCode() {
     return this.commandLine.hashCode();
   }
 

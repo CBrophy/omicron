@@ -8,8 +8,6 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import java.util.LinkedList;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.info;
@@ -25,22 +23,22 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
   // These stats are going to be read by the parent thread for notification
   // and logging, so they need to have a level of concurrency protection
-  private AtomicInteger totalCriticalFailureCount = new AtomicInteger(0);
-  private AtomicInteger totalExpectedFailureCount = new AtomicInteger(0);
-  private AtomicInteger totalSuccessCount = new AtomicInteger(0);
-  private AtomicInteger executionCount = new AtomicInteger(0);
-  private AtomicInteger skippedExecutionCount = new AtomicInteger(0);
+  private int totalCriticalFailureCount = 0;
+  private int totalExpectedFailureCount = 0;
+  private int totalSuccessCount = 0;
+  private int executionCount = 0;
+  private int skippedExecutionCount = 0;
 
-  private AtomicLong firstExecutionTimestamp = new AtomicLong(0L);
-  private AtomicLong lastSuccessTimestamp = new AtomicLong(0L);
-  private AtomicLong lastExecutionTimestamp = new AtomicLong(0L);
+  private long firstExecutionTimestamp = 0L;
+  private long lastSuccessTimestamp = 0L;
+  private long lastExecutionTimestamp = 0L;
 
-  private AtomicInteger criticalFailuresSinceLastSuccess = new AtomicInteger(0);
-  private AtomicInteger expectedFailuresSinceLastSuccess = new AtomicInteger(0);
+  private int criticalFailuresSinceLastSuccess = 0;
+  private int expectedFailuresSinceLastSuccess = 0;
 
-  private AtomicLong averageSuccessDurationMilliseconds = new AtomicLong(0L);
-  private AtomicLong averageExpectedFailureDurationMilliseconds = new AtomicLong(0L);
-  private AtomicLong averageCriticalFailureDurationMilliseconds = new AtomicLong(0L);
+  private long averageSuccessDurationMilliseconds = 0L;
+  private long averageExpectedFailureDurationMilliseconds = 0L;
+  private long averageCriticalFailureDurationMilliseconds = 0L;
 
   private LinkedList<RunningTask> runningTasks = Lists.newLinkedList();
 
@@ -55,14 +53,14 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
   private boolean shouldRunNow(final LocalDateTime localDateTime) {
 
-    if(crontabExpression.timeInSchedule(localDateTime)){
+    if (crontabExpression.timeInSchedule(localDateTime)) {
 
-      if(!isActive()){
+      if (!isActive()) {
         info("{0} skipped execution because it is inactive", commandLine);
         return false;
       }
 
-      if(runningTasks.size() >= configuration.getTaskDuplicateAllowedCount()) {
+      if (runningTasks.size() >= configuration.getTaskDuplicateAllowedCount()) {
         warn("{0} skipped execution because there are already {1} running", commandLine, String.valueOf(runningTasks.size()));
         return false;
       }
@@ -82,15 +80,15 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
     if (shouldRunNow(localDateTime)) {
 
-      this.executionCount.getAndIncrement();
+      this.executionCount++;
 
-      if(this.firstExecutionTimestamp.get() == 0L){
-        this.firstExecutionTimestamp.set(DateTime.now().getMillis());
+      if (this.firstExecutionTimestamp == 0L) {
+        this.firstExecutionTimestamp = DateTime.now().getMillis();
       }
 
       info("[scheduled@{0}] Executing: {1}", localDateTime.toString("yyyyMMdd HH:mm"), commandLine);
 
-      RunningTask runningTask = new RunningTask(commandLine, executingUser);
+      final RunningTask runningTask = new RunningTask(commandLine, executingUser);
 
       // Most recent run to the start of the list to
       // allow ordered deque from the end of the list
@@ -98,11 +96,11 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
       runningTask.start();
 
-      this.lastExecutionTimestamp.set(runningTask.getLaunchTimeMilliseconds());
+      this.lastExecutionTimestamp = runningTask.getLaunchTimeMilliseconds();
 
     } else {
 
-      this.skippedExecutionCount.getAndIncrement();
+      this.skippedExecutionCount++;
 
     }
   }
@@ -112,58 +110,58 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
     // Newer items are added to the start of the list
     // so descending traversal results in ascending chronological
     // order of evaluation
-    int runningTaskCount = runningTasks.size();
+    final int runningTaskCount = runningTasks.size();
 
-    for(int index = runningTaskCount - 1; index >= 0; index--){
+    for (int index = runningTaskCount - 1; index >= 0; index--) {
 
-      RunningTask runningTask = runningTasks.get(index);
+      final RunningTask runningTask = runningTasks.get(index);
 
       if (runningTask.isDone()) {
 
         runningTasks.remove(index);
 
-        long duration = runningTask.getStartTimeMilliseconds() - runningTask.getEndTimeMilliseconds();
+        final long duration = runningTask.getStartTimeMilliseconds() - runningTask.getEndTimeMilliseconds();
 
         if (runningTask.getReturnCode() == 0) {
 
           // The task returned a success code
 
-          this.lastSuccessTimestamp.set(runningTask.getStartTimeMilliseconds());
+          this.lastSuccessTimestamp = runningTask.getStartTimeMilliseconds();
 
-          this.criticalFailuresSinceLastSuccess.set(0);
-          this.expectedFailuresSinceLastSuccess.set(0);
+          this.criticalFailuresSinceLastSuccess = 0;
+          this.expectedFailuresSinceLastSuccess = 0;
 
-          this.averageSuccessDurationMilliseconds.set(rollAverage(
-            this.averageSuccessDurationMilliseconds.get(),
+          this.averageSuccessDurationMilliseconds = rollAverage(
+            this.averageSuccessDurationMilliseconds,
             duration,
-            this.totalSuccessCount.incrementAndGet()
-          ));
+            ++this.totalSuccessCount
+          );
 
         } else if (runningTask.getReturnCode() < configuration.getTaskReturnCodeCriticalFailureThreshold()) {
 
           // The task returned a code for "expected failure"
           // aka. not notification worthy, but not counted against success rate
 
-          this.expectedFailuresSinceLastSuccess.getAndIncrement();
+          this.expectedFailuresSinceLastSuccess++;
 
-          this.averageExpectedFailureDurationMilliseconds.set(rollAverage(
-            this.averageExpectedFailureDurationMilliseconds.get(),
+          this.averageExpectedFailureDurationMilliseconds = rollAverage(
+            this.averageExpectedFailureDurationMilliseconds,
             duration,
-            this.totalExpectedFailureCount.incrementAndGet()
-          ));
+            ++this.totalExpectedFailureCount
+          );
 
         } else {
 
           // Any other code is considered a critical failure
           // and will result in notification
 
-          this.criticalFailuresSinceLastSuccess.getAndIncrement();
+          this.criticalFailuresSinceLastSuccess++;
 
-          this.averageCriticalFailureDurationMilliseconds.set(rollAverage(
-            this.averageCriticalFailureDurationMilliseconds.get(),
+          this.averageCriticalFailureDurationMilliseconds = rollAverage(
+            this.averageCriticalFailureDurationMilliseconds,
             duration,
-            this.totalCriticalFailureCount.incrementAndGet()
-          ));
+            ++this.totalCriticalFailureCount
+          );
 
           info("Scheduled task critical failure detected: {0}", this.toString());
         }
@@ -175,53 +173,53 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   }
 
   public int getTotalCriticalFailureCount() {
-    return totalCriticalFailureCount.get();
+    return totalCriticalFailureCount;
   }
 
   public int getTotalExpectedFailureCount() {
-    return totalExpectedFailureCount.get();
+    return totalExpectedFailureCount;
   }
 
   public int getTotalSuccessCount() {
-    return totalSuccessCount.get();
+    return totalSuccessCount;
   }
 
   public long getLastSuccessTimestamp() {
-    return lastSuccessTimestamp.get();
+    return lastSuccessTimestamp;
   }
 
   public long getLastExecutionTimestamp() {
-    return lastExecutionTimestamp.get();
+    return lastExecutionTimestamp;
   }
 
   public int getCriticalFailuresSinceLastSuccess() {
-    return criticalFailuresSinceLastSuccess.get();
+    return criticalFailuresSinceLastSuccess;
   }
 
   public int getExpectedFailuresSinceLastSuccess() {
-    return expectedFailuresSinceLastSuccess.get();
+    return expectedFailuresSinceLastSuccess;
   }
 
   public long getAverageSuccessDurationMilliseconds() {
-    return averageSuccessDurationMilliseconds.get();
+    return averageSuccessDurationMilliseconds;
   }
 
   public long getAverageExpectedFailureDurationMilliseconds() {
-    return averageExpectedFailureDurationMilliseconds.get();
+    return averageExpectedFailureDurationMilliseconds;
   }
 
   public long getAverageCriticalFailureDurationMilliseconds() {
-    return averageCriticalFailureDurationMilliseconds.get();
+    return averageCriticalFailureDurationMilliseconds;
   }
 
   public int getSkippedExecutionCount() {
-    return skippedExecutionCount.get();
+    return skippedExecutionCount;
   }
 
-  public int getExecutionCount() { return executionCount.get(); }
+  public int getExecutionCount() { return executionCount; }
 
-  public long getFirstExecutionTimestamp(){
-    return firstExecutionTimestamp.get();
+  public long getFirstExecutionTimestamp() {
+    return firstExecutionTimestamp;
   }
 
   boolean isActive() {
@@ -232,7 +230,7 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
     this.active = active;
   }
 
-  public boolean isRunning(){
+  public boolean isRunning() {
     return this.runningTasks.size() > 0;
   }
 
@@ -248,18 +246,18 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   }
 
   @Override
-  public int hashCode(){
+  public int hashCode() {
     return this.crontabExpression.hashCode();
   }
 
   @Override
-  public boolean equals(Object o){
+  public boolean equals(Object o) {
     return o instanceof ScheduledTask
       && this.crontabExpression.equals(((ScheduledTask) o).crontabExpression);
   }
 
   @Override
-  public String toString(){
+  public String toString() {
     return this.crontabExpression.toString();
   }
 }

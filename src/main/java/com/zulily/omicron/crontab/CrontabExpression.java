@@ -24,10 +24,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Parses a single cron row and returns a numerical schedule of run times
  * for each part of the cron expression.
- *
+ * <p/>
  * i.e.
  * 1-10/2 * * * * -> returns 1,3,5,7,9 day vals
- *
+ * <p/>
  * # Example of job definition:
  * # .---------------- minute (0 - 59)
  * # |  .------------- hour (0 - 23)
@@ -44,7 +44,6 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
   private static final Splitter HYPHEN_SPLITTER = Splitter.on('-').trimResults().omitEmptyStrings();
 
 
-
   private final String rawExpression;
   private final int lineNumber;
   private final String executingUser;
@@ -54,15 +53,16 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
   public CrontabExpression(final int lineNumber, final String rawExpression) {
     checkNotNull(rawExpression, "rawExpression");
+
     checkArgument(lineNumber > 0, "lineNumber should be positive");
     this.lineNumber = lineNumber;
+
     this.rawExpression = rawExpression.trim();
+    checkArgument(!this.rawExpression.isEmpty(), "Empty expression");
 
-    checkArgument(!this.rawExpression.isEmpty(), "empty expression");
+    final List<String> expressionParts = CRON_SPLITTER.splitToList(this.rawExpression);
 
-    List<String> expressionParts = CRON_SPLITTER.splitToList(this.rawExpression);
-
-    checkArgument(expressionParts.size() >= ExpressionPart.values().length);
+    checkArgument(expressionParts.size() >= ExpressionPart.values().length, "Uncommented line does not contain all expected parts");
 
     this.executingUser = expressionParts.get(ExpressionPart.ExecutingUser.ordinal());
 
@@ -70,8 +70,8 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
     // side-effect: collapses whitespace in the command - may break some commands out there that require lots of whitespace?
     this.command = Joiner.on(' ').join(Iterables.skip(expressionParts, ExpressionPart.values().length - 1));
 
-    // Fill out the runtime schedule based on the cron expressions
-    HashMap<ExpressionPart, ImmutableSortedSet<Integer>> runtimes = Maps.newHashMap();
+    // Fill in the runtime schedule based on the cron expressions
+    final HashMap<ExpressionPart, ImmutableSortedSet<Integer>> runtimes = Maps.newHashMap();
 
     for (ExpressionPart expressionPart : ExpressionPart.values()) {
 
@@ -94,13 +94,14 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
    * @return A set within the expression's possible range
    */
   private static ImmutableSortedSet<Integer> evaluateExpressionPart(final ExpressionPart expressionPart, final String expression) {
-    List<String> csvParts = COMMA_SPLITTER.splitToList(expression);
 
-    TreeSet<Integer> results = Sets.newTreeSet();
+    final List<String> csvParts = COMMA_SPLITTER.splitToList(expression);
+
+    final TreeSet<Integer> results = Sets.newTreeSet();
 
     for (final String csvPart : csvParts) {
 
-      List<String> slashParts = FORWARD_SLASH_SPLITTER.splitToList(csvPart);
+      final List<String> slashParts = FORWARD_SLASH_SPLITTER.splitToList(csvPart);
 
       // Range step of expression i.e. */2 (none is 1 obviously)
       int rangeStep = 1;
@@ -110,7 +111,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
       if (slashParts.size() == 2) {
         // 0 = rangeExpression, 1 = stepExpression
-        Integer rangeStepInteger = expressionPart.stringValueToInt(slashParts.get(1));
+        final Integer rangeStepInteger = expressionPart.stringValueToInt(slashParts.get(1));
 
         checkNotNull(rangeStepInteger, "Invalid cron expression for %s (rangeStep is not a positive int): %s", expressionPart.name(), expression);
 
@@ -119,8 +120,9 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
         rangeStep = rangeStepInteger;
       }
 
-      String rangeExpression = slashParts.get(0);
-      Range<Integer> allowedRange = expressionPart.getExpressionRange();
+      final String rangeExpression = slashParts.get(0);
+
+      final Range<Integer> allowedRange = expressionPart.getExpressionRange();
 
       int rangeStart = allowedRange.lowerEndpoint();
       int rangeEnd = allowedRange.upperEndpoint();
@@ -128,7 +130,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
       // either * or 0 or 0-6, etc
       if (!"*".equals(rangeExpression)) {
 
-        List<String> hyphenParts = HYPHEN_SPLITTER.splitToList(rangeExpression);
+        final List<String> hyphenParts = HYPHEN_SPLITTER.splitToList(rangeExpression);
 
         checkArgument(!hyphenParts.isEmpty() && hyphenParts.size() <= 2, "Invalid cron expression for %s: %s", expressionPart.name(), expression);
 
@@ -203,7 +205,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
     return lineNumber;
   }
 
-  public boolean timeInSchedule(final LocalDateTime localDateTime){
+  public boolean timeInSchedule(final LocalDateTime localDateTime) {
     checkNotNull(localDateTime, "localDateTime");
 
     // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert it to 0
@@ -215,19 +217,19 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
   }
 
   @Override
-  public int hashCode(){
+  public int hashCode() {
     return this.rawExpression.hashCode();
   }
 
   @Override
-  public boolean equals(Object o){
+  public boolean equals(Object o) {
     return o instanceof CrontabExpression
       && this.rawExpression.equalsIgnoreCase(((CrontabExpression) o).rawExpression);
   }
 
   @Override
-  public String toString(){
-    return String.valueOf(this.lineNumber) + ": " + this.rawExpression;
+  public String toString() {
+    return String.format("[Line: %s] %s", this.lineNumber, this.rawExpression);
   }
 
   @Override

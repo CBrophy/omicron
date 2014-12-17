@@ -1,4 +1,4 @@
-package com.zulily.omicron;
+package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.ComparisonChain;
 import org.joda.time.DateTime;

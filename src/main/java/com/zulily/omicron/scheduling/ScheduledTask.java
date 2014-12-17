@@ -1,7 +1,9 @@
-package com.zulily.omicron;
+package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.Lists;
 
+import com.zulily.omicron.conf.ConfigKey;
+import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 
 import org.joda.time.DateTime;
@@ -14,6 +16,7 @@ import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
 public class ScheduledTask implements Comparable<ScheduledTask> {
+
   private final CrontabExpression crontabExpression;
   private final String commandLine;
   private final String executingUser;
@@ -29,9 +32,9 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   private int executionCount = 0;
   private int skippedExecutionCount = 0;
 
-  private long firstExecutionTimestamp = 0L;
-  private long lastSuccessTimestamp = 0L;
-  private long lastExecutionTimestamp = 0L;
+  private long firstExecutionTimestamp = Configuration.DEFAULT_TIMESTAMP;
+  private long lastSuccessTimestamp = Configuration.DEFAULT_TIMESTAMP;
+  private long lastExecutionTimestamp = Configuration.DEFAULT_TIMESTAMP;
 
   private int criticalFailuresSinceLastSuccess = 0;
   private int expectedFailuresSinceLastSuccess = 0;
@@ -45,10 +48,12 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   public ScheduledTask(final CrontabExpression crontabExpression,
                        final String commandLine,
                        final Configuration configuration) {
+
     this.crontabExpression = checkNotNull(crontabExpression, "crontabExpression");
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.configuration = checkNotNull(configuration, "configuration");
     this.executingUser = crontabExpression.getExecutingUser();
+
   }
 
   private boolean shouldRunNow(final LocalDateTime localDateTime) {
@@ -60,7 +65,7 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
         return false;
       }
 
-      if (runningTasks.size() >= configuration.getTaskDuplicateAllowedCount()) {
+      if (runningTasks.size() >= configuration.getInt(ConfigKey.TaskDuplicateAllowedCount)) {
         warn("{0} skipped execution because there are already {1} running", commandLine, String.valueOf(runningTasks.size()));
         return false;
       }
@@ -82,7 +87,7 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
       this.executionCount++;
 
-      if (this.firstExecutionTimestamp == 0L) {
+      if (this.firstExecutionTimestamp == Configuration.DEFAULT_TIMESTAMP) {
         this.firstExecutionTimestamp = DateTime.now().getMillis();
       }
 
@@ -103,7 +108,9 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
       this.skippedExecutionCount++;
 
     }
+
   }
+
 
   private void sweepRunningTasks() {
 
@@ -137,7 +144,7 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
             ++this.totalSuccessCount
           );
 
-        } else if (runningTask.getReturnCode() < configuration.getTaskReturnCodeCriticalFailureThreshold()) {
+        } else if (runningTask.getReturnCode() < configuration.getInt(ConfigKey.TaskCriticalReturnCode)) {
 
           // The task returned a code for "expected failure"
           // aka. not notification worthy, but not counted against success rate
@@ -222,7 +229,15 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
     return firstExecutionTimestamp;
   }
 
-  boolean isActive() {
+  public CrontabExpression getCrontabExpression() {
+    return crontabExpression;
+  }
+
+  public Configuration getConfiguration() {
+    return configuration;
+  }
+
+  public boolean isActive() {
     return active;
   }
 

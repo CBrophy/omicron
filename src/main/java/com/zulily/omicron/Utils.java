@@ -1,11 +1,16 @@
 package com.zulily.omicron;
 
+import com.google.common.base.Splitter;
+
 import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Utils {
-  public static Logger LOG = Logger.getGlobal();
+  private final static Logger LOG = Logger.getGlobal();
+  public final static Splitter CSV_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
+  public final static Splitter EQUAL_SPLITTER = Splitter.on('=').trimResults().omitEmptyStrings();
+
 
   public static boolean fileExistsAndCanRead(final File file) {
     return file != null && file.exists() && file.isFile() && file.canRead();

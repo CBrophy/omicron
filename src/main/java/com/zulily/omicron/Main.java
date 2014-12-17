@@ -1,6 +1,8 @@
 package com.zulily.omicron;
 
 import com.google.common.base.Throwables;
+import com.zulily.omicron.conf.Configuration;
+import com.zulily.omicron.scheduling.TaskManager;
 
 import java.io.File;
 

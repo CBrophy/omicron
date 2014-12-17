@@ -1,11 +1,10 @@
 package com.zulily.omicron.sla;
 
-import com.zulily.omicron.ScheduledTask;
+import com.zulily.omicron.alert.Alert;
+import com.zulily.omicron.scheduling.ScheduledTask;
 
 public interface Policy {
-  boolean evaluate(final ScheduledTask scheduledTask);
-
-  boolean enabled();
+  Alert evaluate(final ScheduledTask scheduledTask);
 
   String getName();
 }

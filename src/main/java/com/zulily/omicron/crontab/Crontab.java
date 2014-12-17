@@ -8,7 +8,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
-import com.zulily.omicron.Configuration;
+import com.zulily.omicron.conf.ConfigKey;
+import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.Utils;
 
 import java.io.IOException;
@@ -20,10 +21,15 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.zulily.omicron.Utils.error;
+import static com.zulily.omicron.Utils.info;
+import static com.zulily.omicron.Utils.warn;
 
 public final class Crontab {
+  public final static String OVERRIDE = "#override:";
+
   private final ImmutableSet<CrontabExpression> crontabExpressions;
   private final ImmutableMap<String, String> variables;
+  private final ImmutableMap<Integer, Configuration> configurationOverrides;
   private final int badRowCount;
   private final long lastModified;
 
@@ -33,6 +39,7 @@ public final class Crontab {
     checkState(Utils.fileExistsAndCanRead(configuration.getCrontab()), "Cannot read/find crontab: ", configuration.getCrontab().getAbsolutePath());
 
     HashMap<String, String> variableMap = Maps.newHashMap();
+    HashMap<Integer, Configuration> rawOverrideMap = Maps.newHashMap();
     HashSet<CrontabExpression> results = Sets.newHashSet();
 
     int bad = 0;
@@ -43,6 +50,7 @@ public final class Crontab {
       int lineNumber = 0;
 
       final ImmutableList<String> lines = Files.asCharSource(configuration.getCrontab(), Charset.defaultCharset()).readLines();
+      ImmutableMap<ConfigKey, String> overrideMap = null;
 
       for (final String line : lines) {
         lineNumber++;
@@ -50,7 +58,27 @@ public final class Crontab {
         final String trimmed = line.trim();
 
         // Skip commented lines
-        if (trimmed.isEmpty() || '#' == trimmed.charAt(0)) {
+        if (line.startsWith(OVERRIDE)) {
+          overrideMap = getOverrideConfiguration(line);
+
+          info("[Line: {0}] Loaded {1} overrides for next task line", String.valueOf(lineNumber), String.valueOf(overrideMap.size()));
+
+          continue;
+        }
+
+        if ('#' == trimmed.charAt(0)) {
+
+          if (overrideMap != null) {
+
+            warn("[Line: {0}] The previous override map will be ignored because this line is commented", String.valueOf(lineNumber));
+
+            overrideMap = null;
+          }
+
+          continue;
+        }
+
+        if (trimmed.isEmpty()) {
           continue;
         }
 
@@ -66,6 +94,14 @@ public final class Crontab {
 
           results.add(new CrontabExpression(lineNumber, trimmed));
 
+          // The previous non-blank/commented line is an unassociated override map. Associate with this row
+          if (overrideMap != null) {
+
+            rawOverrideMap.put(lineNumber, configuration.withOverrides(overrideMap));
+
+            overrideMap = null;
+          }
+
         } catch (Exception e) {
           bad++;
           error("[Line: {0}] Failed to read crontab entry: {1}\n{2}", String.valueOf(lineNumber), trimmed, Throwables.getStackTraceAsString(e));
@@ -80,8 +116,38 @@ public final class Crontab {
     this.badRowCount = bad;
     this.variables = ImmutableMap.copyOf(variableMap);
     this.crontabExpressions = ImmutableSet.copyOf(results);
+    this.configurationOverrides = ImmutableMap.copyOf(rawOverrideMap);
   }
 
+  private ImmutableMap<ConfigKey, String> getOverrideConfiguration(final String line) {
+
+    final HashMap<ConfigKey, String> result = Maps.newHashMap();
+
+    final String noPrefix = line.substring(OVERRIDE.length()).trim();
+
+    final List<String> overrideList = Utils.CSV_SPLITTER.splitToList(noPrefix);
+
+    for (final String override : overrideList) {
+      List<String> overrideParts = Utils.EQUAL_SPLITTER.splitToList(override);
+
+      if (overrideParts.size() != 2) {
+        warn("Malformed override: {0}", line);
+        continue;
+      }
+
+      final ConfigKey configKey = ConfigKey.fromString(overrideParts.get(0));
+
+      if (configKey == ConfigKey.Unknown) {
+        warn("Malformed override: {0}", line);
+        continue;
+      }
+
+      result.put(configKey, overrideParts.get(1));
+
+    }
+
+    return ImmutableMap.copyOf(result);
+  }
 
   private static List<String> getVariable(final String line) {
     final int firstEqualIndex = line.indexOf('=');
@@ -130,5 +196,9 @@ public final class Crontab {
 
   public ImmutableMap<String, String> getVariables() {
     return variables;
+  }
+
+  public ImmutableMap<Integer, Configuration> getConfigurationOverrides() {
+    return configurationOverrides;
   }
 }

@@ -1,13 +1,14 @@
-package com.zulily.omicron;
+package com.zulily.omicron.scheduling;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.zulily.omicron.alert.Alert;
+import com.zulily.omicron.alert.AlertManager;
+import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.Crontab;
 import com.zulily.omicron.crontab.CrontabExpression;
 import com.zulily.omicron.sla.Policy;
-import com.zulily.omicron.sla.TimeSinceLastSuccess;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
@@ -21,15 +22,14 @@ import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
 public class TaskManager {
-  private final ImmutableList<Policy> slaPolicies;
+
   private final Configuration configuration;
   private HashSet<ScheduledTask> scheduledTaskSet = Sets.newHashSet();
   private ArrayList<ScheduledTask> retiredScheduledTasks = Lists.newArrayList();
-
+  private final AlertManager alertManager = new AlertManager();
 
   public TaskManager(final Configuration configuration) {
     this.configuration = checkNotNull(configuration, "configuration");
-    this.slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess(configuration));
   }
 
   public void run() throws InterruptedException {
@@ -86,12 +86,13 @@ public class TaskManager {
         final long taskEvaluationStartMs = DateTime.now().getMillis();
 
         for (final ScheduledTask scheduledTask : scheduledTaskSet) {
+
           scheduledTask.run();
+
+          alertManager.evaluateSLAs(scheduledTask);
         }
 
         info("Task evaluation took {0} ms", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs));
-
-        checkTaskPolicies();
 
         retireOldTasks();
 
@@ -110,11 +111,12 @@ public class TaskManager {
     final HashSet<ScheduledTask> scheduledTaskUpdates = Sets.newHashSet();
 
     for (final CrontabExpression crontabExpression : crontab.getCrontabExpressions()) {
+      final Configuration configurationOverride = crontab.getConfigurationOverrides().get(crontabExpression.getLineNumber());
 
       final ScheduledTask scheduledTask = new ScheduledTask(
         crontabExpression,
         substituteVariables(crontabExpression.getCommand(), crontab.getVariables()),
-        configuration);
+        configurationOverride == null ? configuration : configurationOverride);
 
       scheduledTaskUpdates.add(scheduledTask);
     }
@@ -164,22 +166,6 @@ public class TaskManager {
     }
 
     this.scheduledTaskSet = result;
-  }
-
-  private void checkTaskPolicies() {
-    for (final ScheduledTask scheduledTask : scheduledTaskSet) {
-
-      if (scheduledTask.isActive()) {
-        continue;
-      }
-
-      for (final Policy slaPolicy : slaPolicies) {
-        if (slaPolicy.enabled()) {
-          slaPolicy.evaluate(scheduledTask);
-        }
-      }
-
-    }
   }
 
   private void retireOldTasks() {

@@ -7,7 +7,7 @@ import com.zulily.omicron.scheduling.TaskManager;
 import java.io.File;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
+
 import static com.zulily.omicron.Utils.error;
 
 public class Main {
@@ -18,8 +18,6 @@ public class Main {
       printHelp();
       System.exit(0);
     }
-
-    checkState("root".equals(System.getProperty("user.name")), "Omicron must run as root to launch processes as another user");
 
     // see doc for java.util.logging.SimpleFormatter
     // format output will look like:

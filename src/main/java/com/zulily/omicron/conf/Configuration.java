@@ -72,7 +72,7 @@ public class Configuration {
 
     result.putAll(overrideMap);
 
-    return new Configuration(ImmutableMap.copyOf(overrideMap));
+    return new Configuration(ImmutableMap.copyOf(result));
   }
 
   private void printConfig() {
@@ -161,7 +161,7 @@ public class Configuration {
     return Integer.parseInt(getString(configKey, rawConfigMap));
   }
 
-  public boolean getBoolean(final ConfigKey configKey){
+  public boolean getBoolean(final ConfigKey configKey) {
     return Boolean.parseBoolean(getString(configKey, rawConfigMap));
   }
 

@@ -57,6 +57,10 @@ public final class Crontab {
 
         final String trimmed = line.trim();
 
+        if (trimmed.isEmpty()) {
+          continue;
+        }
+
         // Skip commented lines
         if (line.startsWith(OVERRIDE)) {
           overrideMap = getOverrideConfiguration(line);
@@ -75,10 +79,6 @@ public final class Crontab {
             overrideMap = null;
           }
 
-          continue;
-        }
-
-        if (trimmed.isEmpty()) {
           continue;
         }
 

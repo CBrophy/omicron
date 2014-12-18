@@ -35,6 +35,12 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
   @Override
   public void run() {
     try {
+
+      if (!"root".equals(System.getProperty("user.name"))) {
+        warn("Not running as root. Cannot execute: {0}", this.commandLine);
+        return;
+      }
+
       final ProcessBuilder processBuilder = new ProcessBuilder("su", "-", executingUser, "-c", commandLine);
 
       processBuilder.inheritIO();

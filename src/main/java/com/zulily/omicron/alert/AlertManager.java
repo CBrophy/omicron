@@ -144,8 +144,6 @@ public class AlertManager {
 
     this.threadPool.submit(new EmailSender(alertsToSend, this.email));
 
-    this.threadPool.shutdown();
-
   }
 
   private static boolean skipAlert(final Alert alert, final int alertMinutesDelayRepeat) {
@@ -164,9 +162,9 @@ public class AlertManager {
     @Override
     public void run() {
       if (alerts.isEmpty()) {
+        info("No alerts detected");
         return;
       }
-
 
       try {
 

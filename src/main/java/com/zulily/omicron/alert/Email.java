@@ -1,5 +1,6 @@
 package com.zulily.omicron.alert;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -23,6 +24,7 @@ import java.util.Properties;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static com.zulily.omicron.Utils.info;
 
 @SuppressWarnings("UnusedDeclaration")
 public final class Email {
@@ -143,7 +145,8 @@ public final class Email {
     checkArgument(!Strings.isNullOrEmpty(subject.trim()), "Cannot send email with a null or empty subject");
     checkArgument(!Strings.isNullOrEmpty(message.trim()), "Cannnot send email with a null or empty message");
 
-    if(EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())){
+    if (EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())) {
+      dumpEmail(subject, message);
       // Allow testing to use a fake address
       return;
     }
@@ -161,7 +164,8 @@ public final class Email {
     checkArgument(!Strings.isNullOrEmpty(subject), "Cannot send email with a null or empty subject");
     checkArgument(!Strings.isNullOrEmpty(message), "Cannnot send email with a null or empty message");
 
-    if(EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())){
+    if (EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())) {
+      dumpEmail(subject, message);
       // Allow testing to use a fake address
       return;
     }
@@ -178,5 +182,20 @@ public final class Email {
     return "<div style=\"font-family: monospace; white-space: pre-wrap;\">" +
       message +
       "</div>";
+  }
+
+  private void dumpEmail(final String subject, final String message) {
+    StringBuilder emailConfigBuilder = new StringBuilder("\n");
+    emailConfigBuilder = emailConfigBuilder.append("#BEGIN ALERT EMAIL#").append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("smtpAuth: ").append(this.smtpSession.getProperty("mail.smtp.auth")).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("smtpHost: ").append(this.smtpSession.getProperty("mail.smtp.host")).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("smtpPort: ").append(this.smtpSession.getProperty("mail.smtp.port")).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("-----------------------").append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("to: ").append(Joiner.on(',').join(this.recipients)).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("from: ").append(this.from).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("subject: ").append(subject).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("message: ").append(message).append("\n");
+    emailConfigBuilder = emailConfigBuilder.append("#END ALERT EMAIL#").append("\n");
+    info(emailConfigBuilder.toString());
   }
 }

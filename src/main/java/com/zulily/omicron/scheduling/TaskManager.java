@@ -3,12 +3,10 @@ package com.zulily.omicron.scheduling;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.alert.AlertManager;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.Crontab;
 import com.zulily.omicron.crontab.CrontabExpression;
-import com.zulily.omicron.sla.Policy;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
@@ -26,10 +24,11 @@ public class TaskManager {
   private final Configuration configuration;
   private HashSet<ScheduledTask> scheduledTaskSet = Sets.newHashSet();
   private ArrayList<ScheduledTask> retiredScheduledTasks = Lists.newArrayList();
-  private final AlertManager alertManager = new AlertManager();
+  private final AlertManager alertManager;
 
   public TaskManager(final Configuration configuration) {
     this.configuration = checkNotNull(configuration, "configuration");
+    this.alertManager = new AlertManager(configuration.getAlertEmail());
   }
 
   public void run() throws InterruptedException {
@@ -89,12 +88,17 @@ public class TaskManager {
 
           scheduledTask.run();
 
-          alertManager.evaluateSLAs(scheduledTask);
         }
 
         info("Task evaluation took {0} ms", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs));
 
         retireOldTasks();
+
+        // Perform the alert evaluation outside of the task launching loop
+        // to avoid delaying task launch and to skip evaluation
+        // against retired tasks
+
+        alertManager.sendAlerts(scheduledTaskSet);
 
       } catch (Exception e) {
         error("Task evaluation exception\n{0}", Throwables.getStackTraceAsString(e));

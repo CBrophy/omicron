@@ -161,6 +161,10 @@ public class Configuration {
     return Integer.parseInt(getString(configKey, rawConfigMap));
   }
 
+  public boolean getBoolean(final ConfigKey configKey){
+    return Boolean.parseBoolean(getString(configKey, rawConfigMap));
+  }
+
   public String getString(final ConfigKey configKey) {
     return getString(configKey, rawConfigMap);
   }

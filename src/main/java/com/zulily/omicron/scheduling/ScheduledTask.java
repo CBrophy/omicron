@@ -2,6 +2,8 @@ package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.Lists;
 
+import com.google.common.collect.Maps;
+import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
@@ -10,6 +12,7 @@ import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import java.util.LinkedList;
+import java.util.TreeMap;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.info;
@@ -21,6 +24,8 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   private final String commandLine;
   private final String executingUser;
   private final Configuration configuration;
+  private final LinkedList<RunningTask> runningTasks = Lists.newLinkedList();
+  private final TreeMap<String, Alert> policyAlerts = Maps.newTreeMap();
 
   private boolean active = true;
 
@@ -43,7 +48,6 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   private long averageExpectedFailureDurationMilliseconds = 0L;
   private long averageCriticalFailureDurationMilliseconds = 0L;
 
-  private LinkedList<RunningTask> runningTasks = Lists.newLinkedList();
 
   public ScheduledTask(final CrontabExpression crontabExpression,
                        final String commandLine,
@@ -237,6 +241,10 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
     return configuration;
   }
 
+  public TreeMap<String, Alert> getPolicyAlerts() {
+    return policyAlerts;
+  }
+
   public boolean isActive() {
     return active;
   }
@@ -275,4 +283,5 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   public String toString() {
     return this.crontabExpression.toString();
   }
+
 }

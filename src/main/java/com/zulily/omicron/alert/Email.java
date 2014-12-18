@@ -22,9 +22,11 @@ import java.util.Properties;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 @SuppressWarnings("UnusedDeclaration")
 public final class Email {
+  public final static String EXAMPLE_ADDRESS = "someone@example.com";
 
   private static javax.mail.Authenticator buildAuthenticator(final String username, final String password) {
     return new Authenticator() {
@@ -35,7 +37,9 @@ public final class Email {
   }
 
   public static Builder from(final String address) throws AddressException {
+
     checkArgument(!Strings.isNullOrEmpty(address), "address cannot be empty");
+
     return new Builder(new InternetAddress(address));
   }
 
@@ -61,6 +65,7 @@ public final class Email {
       checkArgument(!Iterables.isEmpty(addresses), "addresses cannot be empty");
 
       ImmutableList.Builder<Address> recipientBuilder = ImmutableList.builder();
+
       for (String recipient : addresses) {
         recipientBuilder.add(new InternetAddress(recipient));
       }
@@ -72,22 +77,29 @@ public final class Email {
     public Builder withSMTPServer(String hostname, int port) {
       checkArgument(!Strings.isNullOrEmpty(hostname), "hostname cannot be empty");
       checkArgument(port > 0, "port must be > 0");
+
       this.smtpHost = hostname;
       this.smtpPort = port;
+
       return this;
     }
 
     public Builder withAuthentication(String username, String password) {
+
       checkArgument(!Strings.isNullOrEmpty(username), "username cannot be empty");
       checkArgument(!Strings.isNullOrEmpty(password), "password cannot be empty");
+
       this.authenticator = buildAuthenticator(username, password);
+
       return this;
     }
 
     public Email build() {
-      if (Iterables.isEmpty(to)) {
-        throw new RuntimeException("No email recipients specified");
-      }
+
+      checkState(!Iterables.isEmpty(to), "No email recipients specified");
+      checkState(from != null, "No from address specified");
+      checkState(!Strings.isNullOrEmpty(this.smtpHost), "No smtp host specified");
+      checkState(this.smtpPort > 0, "No smtp port specified");
 
       return new Email(
         this.smtpHost,
@@ -104,7 +116,6 @@ public final class Email {
   private final Address from;
   private final ImmutableList<Address> recipients;
 
-
   public Email(final String smtpHost,
                final int smtpPort,
                final Address fromAddress,
@@ -112,6 +123,7 @@ public final class Email {
                final Optional<Authenticator> authenticator) {
 
     Properties sessionProperties = System.getProperties();
+
     sessionProperties.setProperty("mail.smtp.host", smtpHost);
     sessionProperties.setProperty("mail.smtp.port", String.valueOf(smtpPort));
 
@@ -128,9 +140,13 @@ public final class Email {
   }
 
   public void send(final String subject, final String message) throws MessagingException {
-    checkArgument(!Strings.isNullOrEmpty(subject), "Cannot send email with a null or empty subject");
-    checkArgument(!Strings.isNullOrEmpty(message), "Cannnot send email with a null or empty message");
+    checkArgument(!Strings.isNullOrEmpty(subject.trim()), "Cannot send email with a null or empty subject");
+    checkArgument(!Strings.isNullOrEmpty(message.trim()), "Cannnot send email with a null or empty message");
 
+    if(EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())){
+      // Allow testing to use a fake address
+      return;
+    }
 
     MimeMessage mimeMessage = new MimeMessage(this.smtpSession);
     mimeMessage.setRecipients(Message.RecipientType.TO, Iterables.toArray(recipients, Address.class));
@@ -145,6 +161,10 @@ public final class Email {
     checkArgument(!Strings.isNullOrEmpty(subject), "Cannot send email with a null or empty subject");
     checkArgument(!Strings.isNullOrEmpty(message), "Cannnot send email with a null or empty message");
 
+    if(EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())){
+      // Allow testing to use a fake address
+      return;
+    }
 
     MimeMessage mimeMessage = new MimeMessage(this.smtpSession);
     mimeMessage.setRecipients(Message.RecipientType.TO, Iterables.toArray(recipients, Address.class));

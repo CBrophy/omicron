@@ -29,16 +29,16 @@ public class TimeSinceLastSuccess implements Policy {
 
     final boolean failed = DateTime.now().getMillis() - baseTimestamp > TimeUnit.MINUTES.toMillis(millisecondsBetweenSuccess);
 
-    return createAlert(scheduledTask, failed);
+    return createAlert(scheduledTask, failed, baseTimestamp);
   }
 
-  private Alert createAlert(final ScheduledTask scheduledTask, final boolean failed) {
+  private Alert createAlert(final ScheduledTask scheduledTask, final boolean failed, long baseTimestamp) {
     final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
     final Chronology chronology = scheduledTask.getConfiguration().getChronology();
 
     return new Alert(
       getName(),
-      String.format("%s %s %s: last success at %s", scheduledTask.toString(), failed ? "failed" : "succeeded", getName(), (new LocalDateTime(scheduledTask.getLastSuccessTimestamp(), chronology)).toString()),
+      String.format("%s %s: last success at %s", failed ? "failed" : "succeeded", getName(), (new LocalDateTime(baseTimestamp, chronology)).toString()),
       crontabExpression.getLineNumber(),
       crontabExpression.getRawExpression(),
       failed

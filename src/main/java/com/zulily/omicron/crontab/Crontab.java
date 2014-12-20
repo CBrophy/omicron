@@ -125,7 +125,7 @@ public final class Crontab {
 
     final String noPrefix = line.substring(OVERRIDE.length()).trim();
 
-    final List<String> overrideList = Utils.CSV_SPLITTER.splitToList(noPrefix);
+    final List<String> overrideList = Utils.COMMA_SPLITTER.splitToList(noPrefix);
 
     for (final String override : overrideList) {
       List<String> overrideParts = Utils.EQUAL_SPLITTER.splitToList(override);

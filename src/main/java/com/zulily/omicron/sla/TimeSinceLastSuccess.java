@@ -11,12 +11,22 @@ import org.joda.time.LocalDateTime;
 
 import java.util.concurrent.TimeUnit;
 
-
+/**
+ * SLA {@link com.zulily.omicron.sla.Policy} that generates alerts based on how long it's been
+ * since a {@link com.zulily.omicron.scheduling.ScheduledTask} has seen a successful return code
+ */
 public class TimeSinceLastSuccess implements Policy {
 
+  /**
+   * See {@link com.zulily.omicron.sla.Policy} class for function details
+   * @param scheduledTask The task to be evaluated
+   * @return Either a success or fail alert, or null if an evaluation can't be made
+   */
   @Override
   public Alert evaluate(final ScheduledTask scheduledTask) {
-    // The task has never been evaluated to run - cannot alert yet
+
+    // The task has never been evaluated to run (it's new) - cannot alert yet
+    // so just return null
     if (scheduledTask.getFirstExecutionTimestamp() == Configuration.DEFAULT_TIMESTAMP) {
       return null;
     }
@@ -36,9 +46,11 @@ public class TimeSinceLastSuccess implements Policy {
     final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
     final Chronology chronology = scheduledTask.getConfiguration().getChronology();
 
+    // Alerts are displayed as grouped by the crontab command string, so there is
+    // no need to print it out in the alert message
     return new Alert(
       getName(),
-      String.format("%s %s: last success at %s", failed ? "failed" : "succeeded", getName(), (new LocalDateTime(baseTimestamp, chronology)).toString()),
+      String.format("%s %s: last success at %s", failed ? "failed" : "succeeded", getName(), (new LocalDateTime(baseTimestamp, chronology)).toString("yyyyMMdd HH:mm")),
       crontabExpression.getLineNumber(),
       crontabExpression.getRawExpression(),
       failed

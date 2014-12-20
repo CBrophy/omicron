@@ -18,7 +18,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
-public class ScheduledTask implements Comparable<ScheduledTask> {
+/**
+ * ScheduledTasks encapsulates the logic of scheduling a {@link com.zulily.omicron.crontab.CrontabExpression}
+ * as well as tracking the external processes as they are launched
+ */
+public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   private final CrontabExpression crontabExpression;
   private final String commandLine;
@@ -29,8 +33,6 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
   private boolean active = true;
 
-  // These stats are going to be read by the parent thread for notification
-  // and logging, so they need to have a level of concurrency protection
   private int totalCriticalFailureCount = 0;
   private int totalExpectedFailureCount = 0;
   private int totalSuccessCount = 0;
@@ -48,7 +50,12 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
   private long averageExpectedFailureDurationMilliseconds = 0L;
   private long averageCriticalFailureDurationMilliseconds = 0L;
 
-
+  /**
+   * Constructor
+   * @param crontabExpression The associated crontab expression object
+   * @param commandLine The commandLine to execute on the schedule, with variables substituted
+   * @param configuration The potentially overridden configuration to run against
+   */
   public ScheduledTask(final CrontabExpression crontabExpression,
                        final String commandLine,
                        final Configuration configuration) {
@@ -81,7 +88,16 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
     return false;
   }
 
-  public void run() {
+  /**
+   * The primary work routine for scheduled tasks.
+   *
+   * Evaluates the schedule against the current calendar minute
+   * Removes old references to running tasks
+   * Calculates the operating statistics of the jobs being launched
+   *
+   * @return True if a task was launched, False otherwise
+   */
+  public boolean run() {
     final LocalDateTime localDateTime = LocalDateTime.now(configuration.getChronology());
 
     // Cleans out old process pointers and records stats
@@ -95,7 +111,7 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
         this.firstExecutionTimestamp = DateTime.now().getMillis();
       }
 
-      info("[scheduled@{0}] Executing: {1}", localDateTime.toString("yyyyMMdd HH:mm"), commandLine);
+      info("[scheduled@{0} {1}] Executing: {2}", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), commandLine);
 
       final RunningTask runningTask = new RunningTask(commandLine, executingUser);
 
@@ -107,11 +123,15 @@ public class ScheduledTask implements Comparable<ScheduledTask> {
 
       this.lastExecutionTimestamp = runningTask.getLaunchTimeMilliseconds();
 
+      return true;
+
     } else {
 
       this.skippedExecutionCount++;
 
     }
+
+    return false;
 
   }
 

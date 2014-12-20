@@ -1,6 +1,7 @@
 package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.ComparisonChain;
+import com.zulily.omicron.Utils;
 import org.joda.time.DateTime;
 
 import java.lang.reflect.Field;
@@ -36,7 +37,7 @@ public class RunningTask implements Runnable, Comparable<RunningTask> {
   public void run() {
     try {
 
-      if (!"root".equals(System.getProperty("user.name"))) {
+      if (!Utils.isRunningAsRoot()) {
         warn("Not running as root. Cannot execute: {0}", this.commandLine);
         return;
       }

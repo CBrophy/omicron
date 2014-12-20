@@ -162,7 +162,6 @@ public class AlertManager {
     @Override
     public void run() {
       if (alerts.isEmpty()) {
-        info("No alerts detected");
         return;
       }
 

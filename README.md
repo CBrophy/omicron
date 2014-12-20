@@ -5,7 +5,7 @@ Java implementation of crond++ that works with the existing crontab format
 
 Why not just use crond?
 
-crond is beautiful in its simplicity. It's also terrible at helping development teams
+crond is beautiful in its simplicity, but not so great at helping development teams
 manage and monitor critical jobs across instances.
 
 * crond floods the machine with scheduled jobs even if they're slower than the configured schedule frequency.
@@ -24,11 +24,5 @@ Features
 * Can specify a timezone for evaluation of job schedules
 * Per-job configuration of config parameters in crontab - still compatible with crond
 * Tracks statistics of jobs as they execute
-
-TODO:
-* Kill long-running tasks based on configurable max lifetime
-* Allow policy selection both globally and per job
-* Add policy for posting alerts to a URL endpoint
-* Add alerts for commented job lines or uncommented *bad* lines
 
 

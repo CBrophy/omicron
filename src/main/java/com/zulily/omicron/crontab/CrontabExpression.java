@@ -1,8 +1,6 @@
 package com.zulily.omicron.crontab;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
-import com.google.common.base.Splitter;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedSet;
@@ -10,6 +8,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
+import com.zulily.omicron.Utils;
 import org.joda.time.LocalDateTime;
 
 import java.util.HashMap;
@@ -38,10 +37,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * # *  *  *  *  * user-name  command to be executed
  */
 public class CrontabExpression implements Comparable<CrontabExpression> {
-  private static final Splitter CRON_SPLITTER = Splitter.on(CharMatcher.WHITESPACE).trimResults().omitEmptyStrings();
-  private static final Splitter COMMA_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
-  private static final Splitter FORWARD_SLASH_SPLITTER = Splitter.on('/').trimResults().omitEmptyStrings();
-  private static final Splitter HYPHEN_SPLITTER = Splitter.on('-').trimResults().omitEmptyStrings();
 
 
   private final String rawExpression;
@@ -60,7 +55,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
     this.rawExpression = rawExpression.trim();
     checkArgument(!this.rawExpression.isEmpty(), "Empty expression");
 
-    final List<String> expressionParts = CRON_SPLITTER.splitToList(this.rawExpression);
+    final List<String> expressionParts = Utils.WHITESPACE_SPLITTER.splitToList(this.rawExpression);
 
     checkArgument(expressionParts.size() >= ExpressionPart.values().length, "Uncommented line does not contain all expected parts");
 
@@ -95,13 +90,13 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
    */
   private static ImmutableSortedSet<Integer> evaluateExpressionPart(final ExpressionPart expressionPart, final String expression) {
 
-    final List<String> csvParts = COMMA_SPLITTER.splitToList(expression);
+    final List<String> csvParts = Utils.COMMA_SPLITTER.splitToList(expression);
 
     final TreeSet<Integer> results = Sets.newTreeSet();
 
     for (final String csvPart : csvParts) {
 
-      final List<String> slashParts = FORWARD_SLASH_SPLITTER.splitToList(csvPart);
+      final List<String> slashParts = Utils.FORWARD_SLASH_SPLITTER.splitToList(csvPart);
 
       // Range step of expression i.e. */2 (none is 1 obviously)
       int rangeStep = 1;
@@ -130,7 +125,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
       // either * or 0 or 0-6, etc
       if (!"*".equals(rangeExpression)) {
 
-        final List<String> hyphenParts = HYPHEN_SPLITTER.splitToList(rangeExpression);
+        final List<String> hyphenParts = Utils.HYPHEN_SPLITTER.splitToList(rangeExpression);
 
         checkArgument(!hyphenParts.isEmpty() && hyphenParts.size() <= 2, "Invalid cron expression for %s: %s", expressionPart.name(), expression);
 

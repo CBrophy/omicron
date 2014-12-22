@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2014 zulily, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.zulily.omicron.crontab;
 
 import com.google.common.base.Joiner;
@@ -106,7 +121,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
       if (slashParts.size() == 2) {
         // 0 = rangeExpression, 1 = stepExpression
-        final Integer rangeStepInteger = expressionPart.stringValueToInt(slashParts.get(1));
+        final Integer rangeStepInteger = expressionPart.textUnitToInt(slashParts.get(1));
 
         checkNotNull(rangeStepInteger, "Invalid cron expression for %s (rangeStep is not a positive int): %s", expressionPart.name(), expression);
 
@@ -129,7 +144,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
         checkArgument(!hyphenParts.isEmpty() && hyphenParts.size() <= 2, "Invalid cron expression for %s: %s", expressionPart.name(), expression);
 
-        Integer rangeStartInteger = expressionPart.stringValueToInt(hyphenParts.get(0));
+        Integer rangeStartInteger = expressionPart.textUnitToInt(hyphenParts.get(0));
 
         checkNotNull(rangeStartInteger, "Invalid cron expression for %s (rangeStart is not an int): %s", expressionPart.name(), expression);
 
@@ -144,7 +159,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
         if (hyphenParts.size() == 2) {
 
-          Integer rangeEndInteger = expressionPart.stringValueToInt(hyphenParts.get(1));
+          Integer rangeEndInteger = expressionPart.textUnitToInt(hyphenParts.get(1));
 
           checkNotNull(rangeEndInteger, "Invalid cron expression for %s (rangeEnd is not an int): %s", expressionPart.name(), expression);
 

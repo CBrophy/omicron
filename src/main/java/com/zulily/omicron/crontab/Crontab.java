@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2014 zulily, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.zulily.omicron.crontab;
 
 import com.google.common.base.CharMatcher;
@@ -24,6 +39,13 @@ import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
+/**
+ * This class contains the logic of reading the specified crontab into memory.
+ * <p/>
+ * Schedule rows are read in an represented as {@link com.zulily.omicron.crontab.CrontabExpression} types
+ * Override rows are read in and associated with the next row that is not blank. If the next non-blank row is commented,
+ * then the override will be ignored.
+ */
 public final class Crontab {
   public final static String OVERRIDE = "#override:";
 
@@ -33,6 +55,11 @@ public final class Crontab {
   private final int badRowCount;
   private final long lastModified;
 
+  /**
+   * Constructor
+   *
+   * @param configuration The global configuration object for Omicron
+   */
   public Crontab(final Configuration configuration) {
 
     checkNotNull(configuration, "configuration");
@@ -142,6 +169,11 @@ public final class Crontab {
         continue;
       }
 
+      if (!configKey.allowOverride()) {
+        warn("Cannot override {0}: {1}", configKey.getRawName(), line);
+        continue;
+      }
+
       result.put(configKey, overrideParts.get(1));
 
     }
@@ -182,22 +214,37 @@ public final class Crontab {
     return ImmutableList.of("$" + varName, varValue);
   }
 
+  /**
+   * @return A set of {@link com.zulily.omicron.crontab.CrontabExpression} objects read from the crontab
+   */
   public ImmutableSet<CrontabExpression> getCrontabExpressions() {
     return crontabExpressions;
   }
 
+  /**
+   * @return the number of crontab schedule rows that were considered 'bad' and cannot be executed
+   */
   public int getBadRowCount() {
     return badRowCount;
   }
 
+  /**
+   * @return The last modified timestamp of the crontab file
+   */
   public long getLastModified() {
     return lastModified;
   }
 
+  /**
+   * @return A map of the variables defined in the crontab
+   */
   public ImmutableMap<String, String> getVariables() {
     return variables;
   }
 
+  /**
+   * @return A map of Configuration overrides by the line number they are associated with
+   */
   public ImmutableMap<Integer, Configuration> getConfigurationOverrides() {
     return configurationOverrides;
   }

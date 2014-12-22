@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2014 zulily, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.zulily.omicron.alert;
 
 import com.google.common.base.Throwables;
@@ -7,11 +22,13 @@ import com.google.common.collect.Sets;
 import com.google.common.collect.TreeMultimap;
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
+import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.scheduling.ScheduledTask;
 import com.zulily.omicron.sla.Policy;
 import com.zulily.omicron.sla.TimeSinceLastSuccess;
 import org.joda.time.DateTime;
 
+import javax.mail.internet.AddressException;
 import java.util.HashSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,15 +39,36 @@ import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
-
+/**
+ * The alert manager tracks the state of alerts across sla policies for all scheduled tasks.
+ * <p/>
+ * It is also responsible for performing the act of sending a notification in a non-blocking way.
+ * <p/>
+ * See: {@link com.zulily.omicron.sla.Policy}, {@link com.zulily.omicron.alert.Alert}
+ */
 public class AlertManager {
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
   private final ImmutableList<Policy> slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess());
 
   private final Email email;
 
-  public AlertManager(final Email email) {
-    this.email = checkNotNull(email, "email");
+  /**
+   * Constructor
+   * @param configuration The loaded global configuration
+   */
+  public AlertManager(final Configuration configuration) {
+    checkNotNull(configuration, "email");
+
+    try {
+
+      this.email = Email.from(configuration.getString(ConfigKey.AlertEmailAddressFrom))
+        .to(Utils.COMMA_SPLITTER.split(configuration.getString(ConfigKey.AlertEmailAddressTo)))
+        .withSMTPServer(configuration.getString(ConfigKey.AlertEmailSmtpHost), Integer.parseInt(configuration.getString(ConfigKey.AlertEmailSmtpPort)))
+        .build();
+
+    } catch (AddressException e) {
+      throw Throwables.propagate(e);
+    }
   }
 
   private void evaluateSLAs(final ScheduledTask scheduledTask) {
@@ -90,6 +128,12 @@ public class AlertManager {
     return existingAlert != null && existingAlert.isFailed() && newAlert.isFailed();
   }
 
+  /**
+   * Evaluates the passed in collection of {@link com.zulily.omicron.scheduling.ScheduledTask} instances
+   * against the list of known {@link com.zulily.omicron.sla.Policy} implementations
+   *
+   * @param scheduledTasks The scheduled tasks to evaluate
+   */
   public void sendAlerts(final Iterable<ScheduledTask> scheduledTasks) {
 
     // Group all alerts into a single email try to mitigate getting mobbed by many single alert messages
@@ -125,12 +169,15 @@ public class AlertManager {
           continue;
         }
 
+
         //Send recovery alerts immediately and don't repeat them
         if (!alert.isFailed()) {
 
           policyAlertsToRemove.add(alert.getPolicyName());
 
         }
+
+        alert.setLastAlertTimestamp(DateTime.now().getMillis());
 
         alertsToSend.put(scheduledTask.toString(), alert);
 

@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2014 zulily, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.zulily.omicron.alert;
 
 import com.google.common.base.Joiner;
@@ -26,16 +41,25 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.zulily.omicron.Utils.info;
 
+/**
+ * Utility class used by {@link com.zulily.omicron.alert.AlertManager} to send {@link com.zulily.omicron.alert.Alert}
+ * messages via email
+ */
 @SuppressWarnings("UnusedDeclaration")
-public final class Email {
+final class Email {
+
   public final static String EXAMPLE_ADDRESS = "someone@example.com";
 
   private static javax.mail.Authenticator buildAuthenticator(final String username, final String password) {
+
     return new Authenticator() {
+
       public PasswordAuthentication getPasswordAuthentication() {
         return new PasswordAuthentication(username, password);
       }
+
     };
+
   }
 
   public static Builder from(final String address) throws AddressException {
@@ -186,6 +210,7 @@ public final class Email {
 
   private void dumpEmail(final String subject, final String message) {
     StringBuilder emailConfigBuilder = new StringBuilder("\n");
+
     emailConfigBuilder = emailConfigBuilder.append("#BEGIN ALERT EMAIL#").append("\n");
     emailConfigBuilder = emailConfigBuilder.append("smtpAuth: ").append(this.smtpSession.getProperty("mail.smtp.auth")).append("\n");
     emailConfigBuilder = emailConfigBuilder.append("smtpHost: ").append(this.smtpSession.getProperty("mail.smtp.host")).append("\n");
@@ -196,6 +221,7 @@ public final class Email {
     emailConfigBuilder = emailConfigBuilder.append("subject: ").append(subject).append("\n");
     emailConfigBuilder = emailConfigBuilder.append("message: ").append(message).append("\n");
     emailConfigBuilder = emailConfigBuilder.append("#END ALERT EMAIL#").append("\n");
+
     info(emailConfigBuilder.toString());
   }
 }

@@ -39,6 +39,7 @@ import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
+
 /**
  * The alert manager tracks the state of alerts across sla policies for all scheduled tasks.
  * <p/>
@@ -47,21 +48,31 @@ import static com.zulily.omicron.Utils.warn;
  * See: {@link com.zulily.omicron.sla.Policy}, {@link com.zulily.omicron.alert.Alert}
  */
 public class AlertManager {
+
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
   private final ImmutableList<Policy> slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess());
-
-  private final Email email;
+  private EmailSender email;
 
   /**
    * Constructor
+   *
    * @param configuration The loaded global configuration
    */
   public AlertManager(final Configuration configuration) {
     checkNotNull(configuration, "email");
 
+    updateConfiguration(configuration);
+  }
+
+  /**
+   * Initializes a new EmailSender with updated parameters
+   *
+   * @param configuration The configuration to use for the EmailSender
+   */
+  public void updateConfiguration(final Configuration configuration) {
     try {
 
-      this.email = Email.from(configuration.getString(ConfigKey.AlertEmailAddressFrom))
+      this.email = EmailSender.from(configuration.getString(ConfigKey.AlertEmailAddressFrom))
         .to(Utils.COMMA_SPLITTER.split(configuration.getString(ConfigKey.AlertEmailAddressTo)))
         .withSMTPServer(configuration.getString(ConfigKey.AlertEmailSmtpHost), Integer.parseInt(configuration.getString(ConfigKey.AlertEmailSmtpPort)))
         .build();
@@ -189,7 +200,7 @@ public class AlertManager {
 
     }
 
-    this.threadPool.submit(new EmailSender(alertsToSend, this.email));
+    this.threadPool.submit(new SendEmailRunnable(alertsToSend, this.email));
 
   }
 
@@ -197,11 +208,11 @@ public class AlertManager {
     return alert.isFailed() && DateTime.now().getMillis() - alert.getLastAlertTimestamp() <= TimeUnit.MINUTES.toMillis(alertMinutesDelayRepeat);
   }
 
-  private static class EmailSender implements Runnable {
+  private static class SendEmailRunnable implements Runnable {
     private final TreeMultimap<String, Alert> alerts;
-    private final Email email;
+    private final com.zulily.omicron.alert.EmailSender email;
 
-    EmailSender(final TreeMultimap<String, Alert> alerts, final Email email) {
+    SendEmailRunnable(final TreeMultimap<String, Alert> alerts, final com.zulily.omicron.alert.EmailSender email) {
       this.alerts = checkNotNull(alerts, "alerts");
       this.email = checkNotNull(email, "email");
     }

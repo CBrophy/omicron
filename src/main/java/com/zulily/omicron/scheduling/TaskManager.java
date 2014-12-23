@@ -27,37 +27,26 @@ import org.joda.time.DateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
-import static com.zulily.omicron.Utils.warn;
 
 /**
  * Primary omicron engine class that launches task evaluation once every calendar minute.
  */
 public class TaskManager {
-
-  private final Configuration configuration;
   private final ArrayList<ScheduledTask> retiredScheduledTasks = Lists.newArrayList();
-  private final AlertManager alertManager;
   private HashSet<ScheduledTask> scheduledTaskSet = Sets.newHashSet();
+  private AlertManager alertManager;
 
-  /**
-   * Constructor
-   *
-   * @param configuration the primary configuration loaded either from the default conf file, or from
-   * the set of defaults in the {@link com.zulily.omicron.conf.Configuration} class
-   */
-  public TaskManager(final Configuration configuration) {
-    this.configuration = checkNotNull(configuration, "configuration");
-    this.alertManager = new AlertManager(configuration);
+  public TaskManager(final Configuration configuration, final Crontab crontab) {
+    updateConfiguration(configuration, crontab);
+    alertManager = new AlertManager(configuration);
   }
 
   /**
    * The main "work" routine in Omicron
-   *
+   * <p/>
    * Blocks and wakes each second to check for and load updates from
    * the crontab file, or to launch tasks that are scheduled to execute
    * at the start of the current calendar minute
@@ -65,107 +54,52 @@ public class TaskManager {
    * @throws InterruptedException
    */
   public void run() throws InterruptedException {
-    // The minute logic is intended to stay calibrated
-    // with the current calendar minute, with the intent being
-    // to run the scheduled jobs as close to second-of-minute 0 as possible
-    // while minimizing acquired execution drift over time
 
-    long lastModifiedCurrentCrontab = Long.MIN_VALUE;
+    try {
 
-    // Optimistically assume that we'll be waking on the
-    // next calendar minute
-    long targetExecuteMinute = getMinuteMillisFromNow(1);
+      final long taskEvaluationStartMs = DateTime.now().getMillis();
 
-    Crontab crontab = null;
+      int executeCount = 0;
 
-    //noinspection InfiniteLoopStatement
-    while (true) {
+      for (final ScheduledTask scheduledTask : scheduledTaskSet) {
 
-      long currentExecuteMinute = getMinuteMillisFromNow(0);
-
-      // Trigger when the execute minute comes up or is past-due
-      // until then watch for crontab changes or sleep
-      while (currentExecuteMinute < targetExecuteMinute) {
-
-        // If the crontab has been changed - re-evaluate the scheduled tasks
-        if (configuration.getCrontab().lastModified() != lastModifiedCurrentCrontab) {
-
-          crontab = new Crontab(configuration);
-
-          lastModifiedCurrentCrontab = crontab.getLastModified();
-
-          if (crontab.getBadRowCount() > 0) {
-            //TODO: report these
-            warn("Bad rows found in crontab! See error log for details");
-          }
-
-          consumeCronChanges(crontab);
+        if (scheduledTask.run()) {
+          executeCount++;
         }
 
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
-
-        currentExecuteMinute = getMinuteMillisFromNow(0);
+      }
+      if (executeCount > 0) {
+        info("Task evaluation took {0} ms: running {1} task(s)", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs), String.valueOf(executeCount));
       }
 
-      // This admits the possibility that, due to drift or
-      // due to the length of time it takes to read crontab changes,
-      // we may actually pass a calendar minute without evaluation
-      // of the scheduled task list
-      //
-      // The current implementation of crond never evaluates the current minute
-      // that it detects schedule changes. For now I'm calling that
-      // particular case "expected behavior"
-      if (currentExecuteMinute != targetExecuteMinute) {
-        warn("Scheduled tasks may have been missed due to missed minute target {0}", String.valueOf(targetExecuteMinute));
-      }
+      // Tasks that have been removed from execution due to a crontab
+      // update will remain referenced until all processes associated with the
+      // old task return
+      retireOldTasks();
 
-      // Set for re-evaluation in the next calendar minute
-      targetExecuteMinute = getMinuteMillisFromNow(1);
+      // Perform the alert evaluation outside of the task launching loop
+      // to avoid delaying task launch and to skip evaluation
+      // against retired tasks
+      alertManager.sendAlerts(scheduledTaskSet);
 
-      try {
-
-        final long taskEvaluationStartMs = DateTime.now().getMillis();
-
-        int executeCount = 0;
-
-        for (final ScheduledTask scheduledTask : scheduledTaskSet) {
-
-          if(scheduledTask.run()){
-            executeCount++;
-          }
-
-        }
-        if(executeCount > 0) {
-          info("Task evaluation took {0} ms: running {1} task(s)", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs), String.valueOf(executeCount));
-        }
-
-        // Tasks that have been removed from execution due to a crontab
-        // update will remain referenced until all processes associated with the
-        // old task return
-        retireOldTasks();
-
-        // Perform the alert evaluation outside of the task launching loop
-        // to avoid delaying task launch and to skip evaluation
-        // against retired tasks
-        alertManager.sendAlerts(scheduledTaskSet);
-
-      } catch (Exception e) {
-        // The only acceptable expected end to omicron is by being killed as a process
-        // or via a bad conf file
-        error("Task evaluation exception\n{0}", Throwables.getStackTraceAsString(e));
-      }
+    } catch (Exception e) {
+      // The only acceptable expected end to task management is by being killed as a process
+      // or via a bad conf file
+      error("Task evaluation exception\n{0}", Throwables.getStackTraceAsString(e));
     }
-
   }
 
-  private void consumeCronChanges(final Crontab crontab) {
-    info("Reading crontab...");
+
+  public void updateConfiguration(final Configuration configuration, final Crontab crontab) {
+    this.alertManager.updateConfiguration(configuration);
 
     final HashSet<ScheduledTask> result = Sets.newHashSet();
 
     final HashSet<ScheduledTask> scheduledTaskUpdates = Sets.newHashSet();
 
     for (final CrontabExpression crontabExpression : crontab.getCrontabExpressions()) {
+
+      // If there are overrides in the crontab for this expression, get them and apply them
       final Configuration configurationOverride = crontab.getConfigurationOverrides().get(crontabExpression.getLineNumber());
 
       final ScheduledTask scheduledTask = new ScheduledTask(
@@ -247,8 +181,5 @@ public class TaskManager {
     return substituted;
   }
 
-  private static long getMinuteMillisFromNow(final int minuteIncrement) {
-    return DateTime.now().plusMinutes(minuteIncrement).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
-  }
 
 }

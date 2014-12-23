@@ -27,6 +27,7 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.Utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
@@ -53,7 +54,7 @@ public final class Crontab {
   private final ImmutableMap<String, String> variables;
   private final ImmutableMap<Integer, Configuration> configurationOverrides;
   private final int badRowCount;
-  private final long lastModified;
+  private final long crontabTimestamp;
 
   /**
    * Constructor
@@ -63,7 +64,10 @@ public final class Crontab {
   public Crontab(final Configuration configuration) {
 
     checkNotNull(configuration, "configuration");
-    checkState(Utils.fileExistsAndCanRead(configuration.getCrontab()), "Cannot read/find crontab: ", configuration.getCrontab().getAbsolutePath());
+
+    File crontabFile = new File(configuration.getString(ConfigKey.CrontabPath));
+
+    checkState(Utils.fileExistsAndCanRead(crontabFile), "Cannot read/find crontab: ", crontabFile.getAbsolutePath());
 
     HashMap<String, String> variableMap = Maps.newHashMap();
     HashMap<Integer, Configuration> rawOverrideMap = Maps.newHashMap();
@@ -71,12 +75,12 @@ public final class Crontab {
 
     int bad = 0;
 
-    this.lastModified = configuration.getCrontab().lastModified();
+    this.crontabTimestamp = crontabFile.lastModified();
 
     try {
       int lineNumber = 0;
 
-      final ImmutableList<String> lines = Files.asCharSource(configuration.getCrontab(), Charset.defaultCharset()).readLines();
+      final ImmutableList<String> lines = Files.asCharSource(crontabFile, Charset.defaultCharset()).readLines();
       ImmutableMap<ConfigKey, String> overrideMap = null;
 
       for (final String line : lines) {
@@ -231,8 +235,8 @@ public final class Crontab {
   /**
    * @return The last modified timestamp of the crontab file
    */
-  public long getLastModified() {
-    return lastModified;
+  public long getCrontabTimestamp() {
+    return crontabTimestamp;
   }
 
   /**

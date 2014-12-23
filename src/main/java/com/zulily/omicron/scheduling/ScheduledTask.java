@@ -42,7 +42,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
   private final CrontabExpression crontabExpression;
   private final String commandLine;
   private final String executingUser;
-  private final Configuration configuration;
+  private Configuration configuration;
   private final LinkedList<RunningTask> runningTasks = Lists.newLinkedList();
   private final TreeMap<String, Alert> policyAlerts = Maps.newTreeMap();
 
@@ -67,9 +67,10 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   /**
    * Constructor
+   *
    * @param crontabExpression The associated crontab expression object
-   * @param commandLine The commandLine to execute on the schedule, with variables substituted
-   * @param configuration The potentially overridden configuration to run against
+   * @param commandLine       The commandLine to execute on the schedule, with variables substituted
+   * @param configuration     The potentially overridden configuration to run against
    */
   public ScheduledTask(final CrontabExpression crontabExpression,
                        final String commandLine,
@@ -105,7 +106,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   /**
    * The primary work routine for scheduled tasks.
-   *
+   * <p/>
    * Evaluates the schedule against the current calendar minute
    * Removes old references to running tasks
    * Calculates the operating statistics of the jobs being launched
@@ -276,6 +277,10 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
     return configuration;
   }
 
+  public void setConfiguration(final Configuration configuration) {
+    this.configuration = checkNotNull(configuration, "configuration");
+  }
+
   public TreeMap<String, Alert> getPolicyAlerts() {
     return policyAlerts;
   }
@@ -310,8 +315,13 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   @Override
   public boolean equals(Object o) {
+
+    // Involving the config timestamp ensures that config updates
+    // will differentiate scheduled tasks as new revisions when the crontab
+    // is reloaded
     return o instanceof ScheduledTask
-      && this.crontabExpression.equals(((ScheduledTask) o).crontabExpression);
+      && this.crontabExpression.equals(((ScheduledTask) o).crontabExpression)
+      && this.configuration.getConfigurationTimestamp() == ((ScheduledTask) o).configuration.getConfigurationTimestamp();
   }
 
   @Override

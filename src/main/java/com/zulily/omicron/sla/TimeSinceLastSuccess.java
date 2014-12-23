@@ -34,6 +34,7 @@ public class TimeSinceLastSuccess implements Policy {
 
   /**
    * See {@link com.zulily.omicron.sla.Policy} class for function details
+   *
    * @param scheduledTask The task to be evaluated
    * @return Either a success or fail alert, or null if an evaluation can't be made
    */
@@ -50,9 +51,9 @@ public class TimeSinceLastSuccess implements Policy {
       ? scheduledTask.getLastSuccessTimestamp() // use it
       : scheduledTask.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp because the task has never succeeded
 
-    final int millisecondsBetweenSuccess = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
+    final int minutesBetweenSuccess = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
 
-    final boolean failed = DateTime.now().getMillis() - baseTimestamp > TimeUnit.MINUTES.toMillis(millisecondsBetweenSuccess);
+    final boolean failed = DateTime.now().getMillis() - baseTimestamp > TimeUnit.MINUTES.toMillis(minutesBetweenSuccess);
 
     return createAlert(scheduledTask, failed, baseTimestamp);
   }

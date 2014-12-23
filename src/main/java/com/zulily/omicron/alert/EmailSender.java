@@ -46,107 +46,21 @@ import static com.zulily.omicron.Utils.info;
  * messages via email
  */
 @SuppressWarnings("UnusedDeclaration")
-final class Email {
+final class EmailSender {
 
   public final static String EXAMPLE_ADDRESS = "someone@example.com";
-
-  private static javax.mail.Authenticator buildAuthenticator(final String username, final String password) {
-
-    return new Authenticator() {
-
-      public PasswordAuthentication getPasswordAuthentication() {
-        return new PasswordAuthentication(username, password);
-      }
-
-    };
-
-  }
-
-  public static Builder from(final String address) throws AddressException {
-
-    checkArgument(!Strings.isNullOrEmpty(address), "address cannot be empty");
-
-    return new Builder(new InternetAddress(address));
-  }
-
-  public static final class Builder {
-
-    private final Address from;
-    private Iterable<Address> to = Lists.newArrayList();
-    private String smtpHost = "localhost";
-    private int smtpPort = 25;
-    private Authenticator authenticator = null;
-
-    private Builder(InternetAddress from) throws AddressException {
-      this.from = checkNotNull(from, "from");
-    }
-
-    public Builder to(String address) throws AddressException {
-      checkArgument(!Strings.isNullOrEmpty(address), "address cannot be empty");
-      this.to = Arrays.<Address>asList(new InternetAddress(address));
-      return this;
-    }
-
-    public Builder to(Iterable<String> addresses) throws AddressException {
-      checkArgument(!Iterables.isEmpty(addresses), "addresses cannot be empty");
-
-      ImmutableList.Builder<Address> recipientBuilder = ImmutableList.builder();
-
-      for (String recipient : addresses) {
-        recipientBuilder.add(new InternetAddress(recipient));
-      }
-
-      this.to = recipientBuilder.build();
-      return this;
-    }
-
-    public Builder withSMTPServer(String hostname, int port) {
-      checkArgument(!Strings.isNullOrEmpty(hostname), "hostname cannot be empty");
-      checkArgument(port > 0, "port must be > 0");
-
-      this.smtpHost = hostname;
-      this.smtpPort = port;
-
-      return this;
-    }
-
-    public Builder withAuthentication(String username, String password) {
-
-      checkArgument(!Strings.isNullOrEmpty(username), "username cannot be empty");
-      checkArgument(!Strings.isNullOrEmpty(password), "password cannot be empty");
-
-      this.authenticator = buildAuthenticator(username, password);
-
-      return this;
-    }
-
-    public Email build() {
-
-      checkState(!Iterables.isEmpty(to), "No email recipients specified");
-      checkState(from != null, "No from address specified");
-      checkState(!Strings.isNullOrEmpty(this.smtpHost), "No smtp host specified");
-      checkState(this.smtpPort > 0, "No smtp port specified");
-
-      return new Email(
-        this.smtpHost,
-        this.smtpPort,
-        this.from,
-        this.to,
-        Optional.fromNullable(this.authenticator)
-      );
-    }
-
-  }
-
   private final Session smtpSession;
   private final Address from;
   private final ImmutableList<Address> recipients;
 
-  public Email(final String smtpHost,
-               final int smtpPort,
-               final Address fromAddress,
-               final Iterable<Address> recipients,
-               final Optional<Authenticator> authenticator) {
+  EmailSender(final String smtpHost,
+              final int smtpPort,
+              final Address fromAddress,
+              final Iterable<Address> recipients,
+              final Optional<Authenticator> authenticator) {
+
+    checkNotNull(smtpHost, "smtpHost");
+    checkArgument(smtpPort > 0, "smtpPort must be positive");
 
     Properties sessionProperties = System.getProperties();
 
@@ -224,4 +138,93 @@ final class Email {
 
     info(emailConfigBuilder.toString());
   }
+
+  private static javax.mail.Authenticator buildAuthenticator(final String username, final String password) {
+
+    return new Authenticator() {
+
+      public PasswordAuthentication getPasswordAuthentication() {
+        return new PasswordAuthentication(username, password);
+      }
+
+    };
+
+  }
+
+  public static Builder from(final String address) throws AddressException {
+
+    checkArgument(!Strings.isNullOrEmpty(address), "address cannot be empty");
+
+    return new Builder(new InternetAddress(address));
+  }
+
+  public static final class Builder {
+
+    private final Address from;
+    private Iterable<Address> to = Lists.newArrayList();
+    private String smtpHost = "localhost";
+    private int smtpPort = 25;
+    private Authenticator authenticator = null;
+
+    private Builder(InternetAddress from) throws AddressException {
+      this.from = checkNotNull(from, "from");
+    }
+
+    public Builder to(String address) throws AddressException {
+      checkArgument(!Strings.isNullOrEmpty(address), "address cannot be empty");
+      this.to = Arrays.<Address>asList(new InternetAddress(address));
+      return this;
+    }
+
+    public Builder to(Iterable<String> addresses) throws AddressException {
+      checkArgument(!Iterables.isEmpty(addresses), "addresses cannot be empty");
+
+      ImmutableList.Builder<Address> recipientBuilder = ImmutableList.builder();
+
+      for (String recipient : addresses) {
+        recipientBuilder.add(new InternetAddress(recipient));
+      }
+
+      this.to = recipientBuilder.build();
+      return this;
+    }
+
+    public Builder withSMTPServer(String hostname, int port) {
+      checkArgument(!Strings.isNullOrEmpty(hostname), "hostname cannot be empty");
+      checkArgument(port > 0, "port must be > 0");
+
+      this.smtpHost = hostname;
+      this.smtpPort = port;
+
+      return this;
+    }
+
+    public Builder withAuthentication(String username, String password) {
+
+      checkArgument(!Strings.isNullOrEmpty(username), "username cannot be empty");
+      checkArgument(!Strings.isNullOrEmpty(password), "password cannot be empty");
+
+      this.authenticator = buildAuthenticator(username, password);
+
+      return this;
+    }
+
+    public EmailSender build() {
+
+      checkState(!Iterables.isEmpty(to), "No email recipients specified");
+      checkState(from != null, "No from address specified");
+      checkState(!Strings.isNullOrEmpty(this.smtpHost), "No smtp host specified");
+      checkState(this.smtpPort > 0, "No smtp port specified");
+
+      return new EmailSender(
+        this.smtpHost,
+        this.smtpPort,
+        this.from,
+        this.to,
+        Optional.fromNullable(this.authenticator)
+      );
+    }
+
+  }
+
 }

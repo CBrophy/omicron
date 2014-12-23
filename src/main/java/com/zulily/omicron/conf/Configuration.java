@@ -16,6 +16,7 @@
 package com.zulily.omicron.conf;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -23,8 +24,6 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.zulily.omicron.Utils;
 import org.joda.time.Chronology;
-import org.joda.time.DateTimeZone;
-import org.joda.time.chrono.ISOChronology;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,32 +47,35 @@ import static com.zulily.omicron.Utils.warn;
  */
 public class Configuration {
   public final static long DEFAULT_TIMESTAMP = 0L;
-
   private final ImmutableMap<ConfigKey, String> rawConfigMap;
+  private final long configurationTimestamp;
+  private final String configFilePath;
 
-  private final File crontab;
-
-  private final Chronology chronology;
 
   /**
    * Constructor
    *
-   * @param configFile The config file to read from
+   * @param configFilePath The config file to read from
    */
-  public Configuration(final File configFile) {
-    this(loadConfig(configFile));
-  }
+  public Configuration(final String configFilePath) {
 
-  private Configuration(final ImmutableMap<ConfigKey, String> rawConfigMap) {
-    this.rawConfigMap = checkNotNull(rawConfigMap, "rawComfigMap");
-
-    this.crontab = new File(getString(ConfigKey.CrontabPath));
-
-    final DateTimeZone timeZone = DateTimeZone.forID(getString(ConfigKey.TimeZone));
-
-    this.chronology = ISOChronology.getInstance(timeZone);
+    this(
+      loadConfig(configFilePath),
+      Utils.getTimestampFromPath(configFilePath),
+      configFilePath);
 
     this.printConfig();
+  }
+
+  private Configuration(
+
+    final ImmutableMap<ConfigKey, String> rawConfigMap,
+    final long configurationTimestamp,
+    final String configFilePath) {
+
+    this.rawConfigMap = checkNotNull(rawConfigMap, "rawComfigMap");
+    this.configurationTimestamp = configurationTimestamp;
+    this.configFilePath = checkNotNull(configFilePath, "configFilePath");
   }
 
   /**
@@ -91,7 +93,10 @@ public class Configuration {
 
     result.putAll(overrideMap);
 
-    return new Configuration(ImmutableMap.copyOf(result));
+    return new Configuration(
+      ImmutableMap.copyOf(result),
+      this.getConfigurationTimestamp(),
+      this.configFilePath);
   }
 
   private void printConfig() {
@@ -106,14 +111,26 @@ public class Configuration {
 
   }
 
-  private static ImmutableMap<ConfigKey, String> loadConfig(final File configFile) {
+  private static ImmutableMap<ConfigKey, String> loadConfig(final String configFilePath) {
+
+    if (Strings.isNullOrEmpty(configFilePath.trim())) {
+
+      info("No config file specified. Will use defaults.");
+
+      return ImmutableMap.of();
+
+    }
+
+    final File configFile = new File(configFilePath);
 
     if (!Utils.fileExistsAndCanRead(configFile)) {
 
-      info(configFile == null ? "No config file specified. Will use defaults." : "Config file not found, not a file, or cannot be read. Will use defaults.");
+      info("Config file not found, not a file, or cannot be read. Will use defaults.");
 
       return ImmutableMap.of();
+
     }
+
 
     final Splitter equalSplitter = Splitter.on('=').trimResults().omitEmptyStrings();
     final HashMap<ConfigKey, String> config = Maps.newHashMap();
@@ -164,18 +181,12 @@ public class Configuration {
     return ImmutableMap.copyOf(config);
   }
 
-  /**
-   * @return A file representing the crontab to read
-   */
-  public File getCrontab() {
-    return crontab;
-  }
 
   /**
    * @return The chronology to interpret the crontab schedule under
    */
   public Chronology getChronology() {
-    return chronology;
+    return Utils.timeZoneToChronology(getString(ConfigKey.TimeZone));
   }
 
   /**
@@ -216,4 +227,15 @@ public class Configuration {
     return configValue == null ? configKey.getDefaultValue() : configValue;
   }
 
+  public long getConfigurationTimestamp() {
+    return configurationTimestamp;
+  }
+
+  public String getConfigFilePath() {
+    return configFilePath;
+  }
+
+  public Configuration reload() {
+    return new Configuration(this.configFilePath);
+  }
 }

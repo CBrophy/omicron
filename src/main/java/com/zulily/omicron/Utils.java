@@ -17,7 +17,13 @@ package com.zulily.omicron;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
+import com.zulily.omicron.conf.ConfigKey;
+import com.zulily.omicron.conf.Configuration;
+import org.joda.time.Chronology;
+import org.joda.time.DateTimeZone;
+import org.joda.time.chrono.ISOChronology;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -40,6 +46,17 @@ public class Utils {
 
   /**
    * Shortcut method to determine if a file object can actually be "read" as a file
+   *
+   * @param filePath The file path to check
+   * @return true if the path exists, is a file, and can be read from
+   */
+  public static boolean fileExistsAndCanRead(final String filePath) {
+    return fileExistsAndCanRead(new File(filePath));
+  }
+
+  /**
+   * Shortcut method to determine if a file object can actually be "read" as a file
+   *
    * @param file The file to check
    * @return true if the path exists, is a file, and can be read from
    */
@@ -76,8 +93,9 @@ public class Utils {
 
   /**
    * Returns a hostname from the current host
-   *
+   * <p/>
    * TODO: Platform dependent
+   *
    * @return Either the configured host name, or the hostname of the local IP
    */
   public static String getHostName() {
@@ -96,12 +114,31 @@ public class Utils {
 
   /**
    * Determines if omicron is running as a root user
-   *
+   * <p/>
    * TODO: Platform dependent
+   *
    * @return true if the current user.name is root
    */
-  public static boolean isRunningAsRoot(){
+  public static boolean isRunningAsRoot() {
     return "root".equals(System.getProperty("user.name"));
+  }
+
+  public static Chronology timeZoneToChronology(final String timeZoneString) {
+    return ISOChronology.getInstance(DateTimeZone.forID(timeZoneString));
+  }
+
+  public static long getTimestampFromPath(final String filePath) {
+    if (Strings.isNullOrEmpty(filePath.trim())) {
+      return Configuration.DEFAULT_TIMESTAMP;
+    }
+
+    final File configFile = new File(filePath);
+
+    if (!Utils.fileExistsAndCanRead(configFile)) {
+      return Configuration.DEFAULT_TIMESTAMP;
+    }
+
+    return configFile.lastModified();
   }
 
 }

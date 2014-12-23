@@ -33,6 +33,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * Tracking and sending failed/successful alerts is implemented in {@link com.zulily.omicron.alert.AlertManager}
  */
 public class Alert implements Comparable<Alert> {
+
   private final boolean failed;
   private final long timstamp;
   private final String policyName;

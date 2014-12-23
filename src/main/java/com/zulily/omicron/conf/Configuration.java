@@ -46,7 +46,7 @@ import static com.zulily.omicron.Utils.warn;
  * See: {@link com.zulily.omicron.conf.ConfigKey} for more details
  */
 public class Configuration {
-  public final static long DEFAULT_TIMESTAMP = 0L;
+
   private final ImmutableMap<ConfigKey, String> rawConfigMap;
   private final long configurationTimestamp;
   private final String configFilePath;
@@ -181,14 +181,6 @@ public class Configuration {
     return ImmutableMap.copyOf(config);
   }
 
-
-  /**
-   * @return The chronology to interpret the crontab schedule under
-   */
-  public Chronology getChronology() {
-    return Utils.timeZoneToChronology(getString(ConfigKey.TimeZone));
-  }
-
   /**
    * Reads a specified Configkey value as an int
    *
@@ -227,15 +219,35 @@ public class Configuration {
     return configValue == null ? configKey.getDefaultValue() : configValue;
   }
 
+  /**
+   * This function is used to update the config value map
+   * when the file artifact is changed but the path doesn't change
+   *
+   * @return a new instance with recent config values
+   */
+  public Configuration reload() {
+    return new Configuration(this.configFilePath);
+  }
+
+  /**
+   * @return The lastModified timestamp of the loaded config file, or DEFAULT_TIMESTAMP
+   * if no file is loaded
+   */
   public long getConfigurationTimestamp() {
     return configurationTimestamp;
   }
 
+  /**
+   * @return The path to the config file used by Omicron
+   */
   public String getConfigFilePath() {
     return configFilePath;
   }
 
-  public Configuration reload() {
-    return new Configuration(this.configFilePath);
+  /**
+   * @return The chronology to interpret the crontab schedule under
+   */
+  public Chronology getChronology() {
+    return Utils.timeZoneToChronology(getString(ConfigKey.TimeZone));
   }
 }

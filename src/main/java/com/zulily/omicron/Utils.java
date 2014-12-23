@@ -19,7 +19,6 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
-import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import org.joda.time.Chronology;
 import org.joda.time.DateTimeZone;
@@ -33,8 +32,10 @@ import java.util.logging.Logger;
 /**
  * A collection of utilities and shared static instances to support omicron
  */
-public class Utils {
+public final class Utils {
   private final static Logger LOG = Logger.getGlobal();
+
+  public final static long DEFAULT_TIMESTAMP = 0L;
 
   public final static Splitter COMMA_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
   public final static Splitter EQUAL_SPLITTER = Splitter.on('=').trimResults().omitEmptyStrings();
@@ -123,19 +124,30 @@ public class Utils {
     return "root".equals(System.getProperty("user.name"));
   }
 
+  /**
+   * Shortcut function to get a {@link org.joda.time.Chronology} object from a timezone string
+   * @param timeZoneString Time Zone string. see {@link org.joda.time.DateTimeZone}
+   * @return {@link org.joda.time.Chronology} associated with the specified timezone
+   */
   public static Chronology timeZoneToChronology(final String timeZoneString) {
     return ISOChronology.getInstance(DateTimeZone.forID(timeZoneString));
   }
 
+  /**
+   * Convenience function to get either the lastModified timestamp from a
+   * specified file
+   * @param filePath The file path to get the timestamp from
+   * @return The file lastModified timestamp, or DEFAULT_TIMESTAMP if the file cannot be read
+   */
   public static long getTimestampFromPath(final String filePath) {
     if (Strings.isNullOrEmpty(filePath.trim())) {
-      return Configuration.DEFAULT_TIMESTAMP;
+      return DEFAULT_TIMESTAMP;
     }
 
     final File configFile = new File(filePath);
 
     if (!Utils.fileExistsAndCanRead(configFile)) {
-      return Configuration.DEFAULT_TIMESTAMP;
+      return DEFAULT_TIMESTAMP;
     }
 
     return configFile.lastModified();

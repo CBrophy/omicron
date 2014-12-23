@@ -15,9 +15,9 @@
  */
 package com.zulily.omicron.sla;
 
+import com.zulily.omicron.Utils;
 import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.conf.ConfigKey;
-import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 import com.zulily.omicron.scheduling.ScheduledTask;
 import org.joda.time.Chronology;
@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * SLA {@link com.zulily.omicron.sla.Policy} that generates alerts based on how long it's been
  * since a {@link com.zulily.omicron.scheduling.ScheduledTask} has seen a successful return code
  */
-public class TimeSinceLastSuccess implements Policy {
+public final class TimeSinceLastSuccess implements Policy {
 
   /**
    * See {@link com.zulily.omicron.sla.Policy} class for function details
@@ -43,11 +43,11 @@ public class TimeSinceLastSuccess implements Policy {
 
     // The task has never been evaluated to run (it's new) - cannot alert yet
     // so just return null
-    if (scheduledTask.getFirstExecutionTimestamp() == Configuration.DEFAULT_TIMESTAMP) {
+    if (scheduledTask.getFirstExecutionTimestamp() == Utils.DEFAULT_TIMESTAMP) {
       return null;
     }
 
-    final long baseTimestamp = scheduledTask.getLastSuccessTimestamp() > Configuration.DEFAULT_TIMESTAMP // if there is a last success timestamp
+    final long baseTimestamp = scheduledTask.getLastSuccessTimestamp() > Utils.DEFAULT_TIMESTAMP // if there is a last success timestamp
       ? scheduledTask.getLastSuccessTimestamp() // use it
       : scheduledTask.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp because the task has never succeeded
 

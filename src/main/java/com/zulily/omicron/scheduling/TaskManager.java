@@ -34,7 +34,7 @@ import static com.zulily.omicron.Utils.info;
 /**
  * Primary omicron engine class that launches task evaluation once every calendar minute.
  */
-public class TaskManager {
+public final class TaskManager {
   private final ArrayList<ScheduledTask> retiredScheduledTasks = Lists.newArrayList();
   private HashSet<ScheduledTask> scheduledTaskSet = Sets.newHashSet();
   private AlertManager alertManager;
@@ -90,6 +90,11 @@ public class TaskManager {
   }
 
 
+  /**
+   * Updates the scheduled tasks and alert manager with any changes from the config or crontab
+   * @param configuration The more current global configuration instance
+   * @param crontab The more current crontab
+   */
   public void updateConfiguration(final Configuration configuration, final Crontab crontab) {
     this.alertManager.updateConfiguration(configuration);
 

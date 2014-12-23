@@ -47,7 +47,7 @@ import static com.zulily.omicron.Utils.warn;
  * <p/>
  * See: {@link com.zulily.omicron.sla.Policy}, {@link com.zulily.omicron.alert.Alert}
  */
-public class AlertManager {
+public final class AlertManager {
 
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
   private final ImmutableList<Policy> slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess());
@@ -208,6 +208,9 @@ public class AlertManager {
     return alert.isFailed() && DateTime.now().getMillis() - alert.getLastAlertTimestamp() <= TimeUnit.MINUTES.toMillis(alertMinutesDelayRepeat);
   }
 
+  /**
+   * This runnable does the work of building the email body and sending it out to the SMTP server
+   */
   private static class SendEmailRunnable implements Runnable {
     private final TreeMultimap<String, Alert> alerts;
     private final com.zulily.omicron.alert.EmailSender email;
@@ -224,6 +227,20 @@ public class AlertManager {
       }
 
       try {
+        // Subject ->
+        // [OMICRON ALERT: <hostname>] failures: # successes: #
+
+        // Body ->
+        // Alerts are listed in order of crontab command and alert timestamp
+        //
+        // <crontab line>
+        //    FAIL/SUCCESS: <alert message>1
+        //    FAIL/SUCCESS: <alert message>1
+        //
+        // ... repeat for each crontab line with alert(s)
+        //
+        // Sincerely,
+        // Omicron <3
 
         StringBuilder bodyBuilder = new StringBuilder("Alerts are listed in order of crontab command and alert timestamp\n\n");
 
@@ -241,11 +258,11 @@ public class AlertManager {
             if (alert.isFailed()) {
               failedCount++;
 
-              bodyBuilder = bodyBuilder.append("FAIL: ");
+              bodyBuilder = bodyBuilder.append("\t\tFAIL: ");
             } else {
               successCount++;
 
-              bodyBuilder = bodyBuilder.append("SUCCESS: ");
+              bodyBuilder = bodyBuilder.append("\t\tSUCCESS: ");
             }
 
             bodyBuilder = bodyBuilder.append(alert.getMessage()).append('\n');

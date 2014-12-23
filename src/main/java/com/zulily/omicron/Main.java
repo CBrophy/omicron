@@ -29,7 +29,7 @@ import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
-public class Main {
+public final class Main {
 
   public static void main(final String[] args) {
 
@@ -52,15 +52,11 @@ public class Main {
       final TaskManager taskManager = new TaskManager(configuration, crontab);
 
       // The minute logic is intended to stay calibrated
-      // with the current calendar minute, with the intent being
-      // to run the scheduled jobs as close to second-of-minute 0 as possible
+      // with the current calendar minute.
+      // Scheduled jobs should run as close to second-of-minute=0 as possible
       // while minimizing acquired execution drift over time
 
-      // Optimistically assume that we'll be waking on the
-      // next calendar minute
-
       long targetExecuteMinute = getMinuteMillisFromNow(1);
-
 
       //noinspection InfiniteLoopStatement
       while (true) {
@@ -72,7 +68,7 @@ public class Main {
 
           if (configurationUpdated(crontab, configuration)) {
 
-            info("Either configuration or crontab updated. Reloading.");
+            info("Either configuration or crontab updated. Reloading task configurations.");
 
             configuration = configuration.reload();
             crontab = new Crontab(configuration);
@@ -83,6 +79,7 @@ public class Main {
           try {
 
             Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+
           } catch (InterruptedException e) {
             throw Throwables.propagate(e);
           }
@@ -91,8 +88,8 @@ public class Main {
 
         }
 
-        // This admits the possibility that, due to drift or
-        // due to the length of time it takes to read crontab/config changes,
+        // Due to drift, the previous cycle or due to the length of
+        // time it takes to read crontab/config changes,
         // we may actually pass a calendar minute without evaluation
         // of the scheduled task list
         //

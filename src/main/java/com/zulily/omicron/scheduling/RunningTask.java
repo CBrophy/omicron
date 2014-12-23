@@ -34,7 +34,7 @@ import static com.zulily.omicron.Utils.warn;
  * <p/>
  * TODO: platform specific
  */
-public class RunningTask implements Runnable, Comparable<RunningTask> {
+public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
   private final long launchTimeMilliseconds;
   private final String commandLine;

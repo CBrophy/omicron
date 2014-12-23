@@ -51,7 +51,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * # |  |  |  |  |
  * # *  *  *  *  * user-name  command to be executed
  */
-public class CrontabExpression implements Comparable<CrontabExpression> {
+public final class CrontabExpression implements Comparable<CrontabExpression> {
 
 
   private final String rawExpression;
@@ -61,10 +61,15 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
   private final ImmutableMap<ExpressionPart, ImmutableSortedSet<Integer>> expressionRuntimes;
 
+  /**
+   * Constructor
+   * @param lineNumber the line number in the crontab
+   * @param rawExpression the string value of the line as it appears in the crontab
+   */
   public CrontabExpression(final int lineNumber, final String rawExpression) {
     checkNotNull(rawExpression, "rawExpression");
 
-    checkArgument(lineNumber > 0, "lineNumber should be positive");
+    checkArgument(lineNumber > 0, "lineNumber should be positive: %s", lineNumber);
     this.lineNumber = lineNumber;
 
     this.rawExpression = rawExpression.trim();
@@ -72,11 +77,11 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
     final List<String> expressionParts = Utils.WHITESPACE_SPLITTER.splitToList(this.rawExpression);
 
-    checkArgument(expressionParts.size() >= ExpressionPart.values().length, "Uncommented line does not contain all expected parts");
+    checkArgument(expressionParts.size() >= ExpressionPart.values().length, "Uncommented line %s does not contain all expected parts: %s", lineNumber, rawExpression);
 
     this.executingUser = expressionParts.get(ExpressionPart.ExecutingUser.ordinal());
 
-    // The command is everything after the user - just join it right back up with space separators
+    // The command expression is everything after the user - just join it right back up with space separators
     // side-effect: collapses whitespace in the command - may break some commands out there that require lots of whitespace?
     this.command = Joiner.on(' ').join(Iterables.skip(expressionParts, ExpressionPart.values().length - 1));
 
@@ -85,7 +90,8 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
     for (ExpressionPart expressionPart : ExpressionPart.values()) {
 
-      if (expressionPart == ExpressionPart.ExecutingUser || expressionPart == ExpressionPart.Command) {
+      // Ignore anything starting with or coming after the user value
+      if (expressionPart.ordinal() >= ExpressionPart.ExecutingUser.ordinal()) {
         continue;
       }
 
@@ -96,14 +102,18 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
   }
 
   /**
-   * Does the actual work of tearing apart the schedule parts and making them
-   * into numerical sets
+   * Does the actual work of tearing apart the schedule expression and making them
+   * into numerical sets of runtime whitelists
    *
    * @param expressionPart The current part we're working on
    * @param expression     The text expression to evaluate
-   * @return A set within the expression's possible range
+   * @return A set within the expression's possible execution range
    */
   private static ImmutableSortedSet<Integer> evaluateExpressionPart(final ExpressionPart expressionPart, final String expression) {
+    // Order of operations ->
+    // 1) Split value by commas (lists) and for each csv.n:
+    // 2) Split value by slashes (range/rangeStep)
+    // 3) Match all for '*' or split hyphenated range for rangeStart and rangeEnd
 
     final List<String> csvParts = Utils.COMMA_SPLITTER.splitToList(expression);
 
@@ -118,9 +128,8 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
       checkArgument(!slashParts.isEmpty() && slashParts.size() <= 2, "Invalid cron expression for %s: %s", expressionPart.name(), expression);
 
-
       if (slashParts.size() == 2) {
-        // 0 = rangeExpression, 1 = stepExpression
+        // Ordinal definition: 0 = rangeExpression, 1 = stepExpression
         final Integer rangeStepInteger = expressionPart.textUnitToInt(slashParts.get(1));
 
         checkNotNull(rangeStepInteger, "Invalid cron expression for %s (rangeStep is not a positive int): %s", expressionPart.name(), expression);
@@ -132,7 +141,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
 
       final String rangeExpression = slashParts.get(0);
 
-      final Range<Integer> allowedRange = expressionPart.getExpressionRange();
+      final Range<Integer> allowedRange = expressionPart.getAllowedRange();
 
       int rangeStart = allowedRange.lowerEndpoint();
       int rangeEnd = allowedRange.upperEndpoint();
@@ -153,7 +162,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
           rangeStartInteger = 0;
         }
 
-        checkArgument(allowedRange.contains(rangeStartInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.getExpressionRange(), expression);
+        checkArgument(allowedRange.contains(rangeStartInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.getAllowedRange(), expression);
 
         rangeStart = rangeStartInteger;
 
@@ -168,7 +177,7 @@ public class CrontabExpression implements Comparable<CrontabExpression> {
             rangeEndInteger = 0;
           }
 
-          checkArgument(allowedRange.contains(rangeEndInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.getExpressionRange(), expression);
+          checkArgument(allowedRange.contains(rangeEndInteger), "Invalid cron expression for %s (valid range is %s): %s", expressionPart.name(), expressionPart.getAllowedRange(), expression);
 
           rangeEnd = rangeEndInteger;
 

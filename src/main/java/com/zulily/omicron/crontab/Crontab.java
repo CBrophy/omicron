@@ -48,7 +48,7 @@ import static com.zulily.omicron.Utils.warn;
  * then the override will be ignored.
  */
 public final class Crontab {
-  public final static String OVERRIDE = "#override:";
+  public final static String OVERRIDE_KEYWORD = "#override:";
 
   private final ImmutableSet<CrontabExpression> crontabExpressions;
   private final ImmutableMap<String, String> variables;
@@ -65,13 +65,13 @@ public final class Crontab {
 
     checkNotNull(configuration, "configuration");
 
-    File crontabFile = new File(configuration.getString(ConfigKey.CrontabPath));
+    final File crontabFile = new File(configuration.getString(ConfigKey.CrontabPath));
 
     checkState(Utils.fileExistsAndCanRead(crontabFile), "Cannot read/find crontab: ", crontabFile.getAbsolutePath());
 
-    HashMap<String, String> variableMap = Maps.newHashMap();
-    HashMap<Integer, Configuration> rawOverrideMap = Maps.newHashMap();
-    HashSet<CrontabExpression> results = Sets.newHashSet();
+    final HashMap<String, String> variableMap = Maps.newHashMap();
+    final HashMap<Integer, Configuration> rawOverrideMap = Maps.newHashMap();
+    final HashSet<CrontabExpression> results = Sets.newHashSet();
 
     int bad = 0;
 
@@ -92,15 +92,16 @@ public final class Crontab {
           continue;
         }
 
-        // Skip commented lines
-        if (line.startsWith(OVERRIDE)) {
+        if (line.startsWith(OVERRIDE_KEYWORD)) {
           overrideMap = getOverrideConfiguration(line);
 
-          info("[Line: {0}] Loaded {1} overrides for next task line", String.valueOf(lineNumber), String.valueOf(overrideMap.size()));
+          info("[Line: {0}] Loaded {1} overrides for next uncommented task line", String.valueOf(lineNumber), String.valueOf(overrideMap.size()));
 
           continue;
         }
 
+        // Skip commented rows.
+        // If the commented line is the first row encountered after an override keyword, ignore the overrides (assume they were for this line)
         if ('#' == trimmed.charAt(0)) {
 
           if (overrideMap != null) {
@@ -114,6 +115,7 @@ public final class Crontab {
         }
 
         // If it's a variable assignment, save it in the map
+        // and skip to the next row
         final List<String> variableParts = getVariable(trimmed);
 
         if (variableParts.size() == 2) {
@@ -152,9 +154,11 @@ public final class Crontab {
 
   private ImmutableMap<ConfigKey, String> getOverrideConfiguration(final String line) {
 
+    // Override configuration line ->
+    // #override: <ConfigKey>=value,...
     final HashMap<ConfigKey, String> result = Maps.newHashMap();
 
-    final String noPrefix = line.substring(OVERRIDE.length()).trim();
+    final String noPrefix = line.substring(OVERRIDE_KEYWORD.length()).trim();
 
     final List<String> overrideList = Utils.COMMA_SPLITTER.splitToList(noPrefix);
 
@@ -186,6 +190,9 @@ public final class Crontab {
   }
 
   private static List<String> getVariable(final String line) {
+    // Crontab variables like ->
+    // <VARNAME>=value
+
     final int firstEqualIndex = line.indexOf('=');
 
     if (firstEqualIndex == -1) {
@@ -194,6 +201,8 @@ public final class Crontab {
 
     final int firstQuoteIndex = line.indexOf('"');
 
+    // varname is the entire value between the first non-whitespace char
+    // and the first equal sign
     final String varName = line.substring(0, firstEqualIndex);
 
     // Variable names cannot contain whitespace
@@ -203,6 +212,9 @@ public final class Crontab {
 
     String varValue = null;
 
+    // var values can be quoted strings
+    // in such a case, the var value is everything between the first quote
+    // and the last
     if (firstQuoteIndex > -1) {
 
       // If first quote comes before first equal sign, cannot be a var assignment

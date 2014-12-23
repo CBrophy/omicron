@@ -16,7 +16,7 @@
 package com.zulily.omicron.alert;
 
 import com.google.common.collect.ComparisonChain;
-import com.zulily.omicron.conf.Configuration;
+import com.zulily.omicron.Utils;
 import org.joda.time.DateTime;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -32,7 +32,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * <p/>
  * Tracking and sending failed/successful alerts is implemented in {@link com.zulily.omicron.alert.AlertManager}
  */
-public class Alert implements Comparable<Alert> {
+public final class Alert implements Comparable<Alert> {
 
   private final boolean failed;
   private final long timstamp;
@@ -40,7 +40,7 @@ public class Alert implements Comparable<Alert> {
   private final String message;
   private final int lineNumber;
   private final String commandLine;
-  private long lastAlertTimestamp = Configuration.DEFAULT_TIMESTAMP;
+  private long lastAlertTimestamp = Utils.DEFAULT_TIMESTAMP;
 
   /**
    * Constructor
@@ -60,6 +60,7 @@ public class Alert implements Comparable<Alert> {
     this.policyName = checkNotNull(policyName, "policyName");
     this.message = checkNotNull(message, "message");
     this.lineNumber = lineNumber;
+
     checkArgument(lineNumber > 0, "lineNumber must be positive");
 
     this.commandLine = checkNotNull(commandLine, "commandLine");
@@ -121,7 +122,7 @@ public class Alert implements Comparable<Alert> {
 
   @Override
   public int hashCode() {
-    return Long.hashCode(this.timstamp);
+    return this.policyName.hashCode();
   }
 
 }

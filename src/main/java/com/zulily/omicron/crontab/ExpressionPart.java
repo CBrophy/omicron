@@ -34,26 +34,26 @@ enum ExpressionPart {
   ExecutingUser,
   Command;
 
-  private final Range<Integer> expressionRange;
+  private final Range<Integer> allowedRange;
   private final ImmutableMap<String, Integer> stringNameMap;
 
   private ExpressionPart() {
     this(null, null);
   }
 
-  private ExpressionPart(final Range<Integer> expressionRange) {
-    this(expressionRange, null);
+  private ExpressionPart(final Range<Integer> allowedRange) {
+    this(allowedRange, null);
   }
 
-  private ExpressionPart(final Range<Integer> expressionRange, final String[] stringValues) {
-    this.expressionRange = expressionRange;
+  private ExpressionPart(final Range<Integer> allowedRange, final String[] stringValues) {
+    this.allowedRange = allowedRange;
 
     final HashMap<String, Integer> stringValuesMap = Maps.newHashMap();
 
-    if (stringValues != null && expressionRange != null) {
+    if (stringValues != null && allowedRange != null) {
 
       for (int index = 0; index < stringValues.length; index++) {
-        stringValuesMap.put(stringValues[index], index + expressionRange.lowerEndpoint()); // correct for 1-based month/d-o-m
+        stringValuesMap.put(stringValues[index], index + allowedRange.lowerEndpoint()); // correct for 1-based month/d-o-m
       }
 
     }
@@ -62,8 +62,8 @@ enum ExpressionPart {
   }
 
 
-  Range<Integer> getExpressionRange() {
-    return expressionRange;
+  Range<Integer> getAllowedRange() {
+    return allowedRange;
   }
 
   /**

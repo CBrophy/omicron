@@ -18,6 +18,7 @@ package com.zulily.omicron.scheduling;
 import com.google.common.collect.Lists;
 
 import com.google.common.collect.Maps;
+import com.zulily.omicron.Utils;
 import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
@@ -54,9 +55,9 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
   private int executionCount = 0;
   private int skippedExecutionCount = 0;
 
-  private long firstExecutionTimestamp = Configuration.DEFAULT_TIMESTAMP;
-  private long lastSuccessTimestamp = Configuration.DEFAULT_TIMESTAMP;
-  private long lastExecutionTimestamp = Configuration.DEFAULT_TIMESTAMP;
+  private long firstExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
+  private long lastSuccessTimestamp = Utils.DEFAULT_TIMESTAMP;
+  private long lastExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
 
   private int criticalFailuresSinceLastSuccess = 0;
   private int expectedFailuresSinceLastSuccess = 0;
@@ -123,7 +124,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
       this.executionCount++;
 
-      if (this.firstExecutionTimestamp == Configuration.DEFAULT_TIMESTAMP) {
+      if (this.firstExecutionTimestamp == Utils.DEFAULT_TIMESTAMP) {
         this.firstExecutionTimestamp = DateTime.now().getMillis();
       }
 

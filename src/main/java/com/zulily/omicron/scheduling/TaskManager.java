@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 
@@ -40,8 +41,13 @@ public final class TaskManager {
   private AlertManager alertManager;
 
   public TaskManager(final Configuration configuration, final Crontab crontab) {
-    updateConfiguration(configuration, crontab);
+    checkNotNull(configuration, "configuration");
+    checkNotNull(crontab, "crontab");
+
     alertManager = new AlertManager(configuration);
+
+    updateConfiguration(configuration, crontab);
+
   }
 
   /**
@@ -103,6 +109,10 @@ public final class TaskManager {
    * @param crontab       The more current crontab
    */
   public void updateConfiguration(final Configuration configuration, final Crontab crontab) {
+    checkNotNull(configuration, "configuration");
+    checkNotNull(crontab, "crontab");
+    checkNotNull(alertManager, "alertManager");
+
     this.alertManager.updateConfiguration(configuration);
 
     final HashSet<ScheduledTask> result = Sets.newHashSet();

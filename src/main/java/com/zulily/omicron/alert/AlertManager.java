@@ -51,6 +51,8 @@ public final class AlertManager {
 
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
   private final ImmutableList<Policy> slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess());
+
+  // Email sender can be updated by a live config change, while the pending policy lists won't change
   private EmailSender email;
 
   /**

@@ -51,27 +51,34 @@ public final class TaskManager {
    * the crontab file, or to launch tasks that are scheduled to execute
    * at the start of the current calendar minute
    *
-   * @throws InterruptedException
    */
-  public void run() throws InterruptedException {
+  public void run() {
 
-    try {
 
-      final long taskEvaluationStartMs = DateTime.now().getMillis();
+    final long taskEvaluationStartMs = DateTime.now().getMillis();
 
-      int executeCount = 0;
+    int executeCount = 0;
 
-      for (final ScheduledTask scheduledTask : scheduledTaskSet) {
+    for (final ScheduledTask scheduledTask : scheduledTaskSet) {
+
+      try {
 
         if (scheduledTask.run()) {
           executeCount++;
         }
 
-      }
-      if (executeCount > 0) {
-        info("Task evaluation took {0} ms: running {1} task(s)", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs), String.valueOf(executeCount));
+      } catch (Exception e) {
+        // An individual task failure should never block all other tasks from executing, so output any exceptions and continue
+        error("Task evaluation exception on task: {0}\n{1}", scheduledTask.toString(), Throwables.getStackTraceAsString(e));
       }
 
+    }
+
+    if (executeCount > 0) {
+      info("Task evaluation took {0} ms: running {1} task(s)", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs), String.valueOf(executeCount));
+    }
+
+    try {
       // Tasks that have been removed from execution due to a crontab
       // update will remain referenced until all processes associated with the
       // old task return
@@ -83,17 +90,17 @@ public final class TaskManager {
       alertManager.sendAlerts(scheduledTaskSet);
 
     } catch (Exception e) {
-      // The only acceptable expected end to task management is by being killed as a process
-      // or via a bad conf file
-      error("Task evaluation exception\n{0}", Throwables.getStackTraceAsString(e));
+      // This function should not throw exceptions that cause the outer timed loop to break
+      error("Exception while retiring old tasks or sending notifications\n{0}", Throwables.getStackTraceAsString(e));
     }
   }
 
 
   /**
    * Updates the scheduled tasks and alert manager with any changes from the config or crontab
+   *
    * @param configuration The more current global configuration instance
-   * @param crontab The more current crontab
+   * @param crontab       The more current crontab
    */
   public void updateConfiguration(final Configuration configuration, final Crontab crontab) {
     this.alertManager.updateConfiguration(configuration);

@@ -27,7 +27,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * {@link com.zulily.omicron.sla.Policy} implementations when a {@link com.zulily.omicron.scheduling.ScheduledTask}
  * is evaluated to be in one of two states: failed and successful.
  * <p/>
- * Alerts from failed SLA policys are sent on a configured delay schedule (every 5 minutes, etc)
+ * Alerts from failed SLA policies are sent on a configured delay schedule (every 5 minutes, etc)
  * while successful alerts are only sent after a scheduled task leaves a failed SLA state.
  * <p/>
  * Tracking and sending failed/successful alerts is implemented in {@link com.zulily.omicron.alert.AlertManager}

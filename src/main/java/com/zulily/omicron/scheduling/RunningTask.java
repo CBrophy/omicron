@@ -126,7 +126,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
       }
     }
 
-    return -1;
+    return -1L;
   }
 
   @Override

@@ -61,12 +61,12 @@ public final class TimeSinceLastSuccess implements Policy {
   private Alert createAlert(final ScheduledTask scheduledTask, final boolean failed, long baseTimestamp) {
     final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
     final Chronology chronology = scheduledTask.getConfiguration().getChronology();
-
+    final long minutesAgo = TimeUnit.MILLISECONDS.toMinutes(DateTime.now().getMillis() - baseTimestamp);
     // Alerts are displayed as grouped by the crontab command string, so there is
     // no need to print it out in the alert message
     return new Alert(
       getName(),
-      String.format("%s %s: last success at %s", failed ? "failed" : "succeeded", getName(), (new LocalDateTime(baseTimestamp, chronology)).toString("yyyyMMdd HH:mm")),
+      String.format("%s: last success at %s (%s minutes ago)", getName(), (new LocalDateTime(baseTimestamp, chronology)).toString("yyyyMMdd HH:mm"), minutesAgo),
       crontabExpression.getLineNumber(),
       crontabExpression.getRawExpression(),
       failed

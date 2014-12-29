@@ -227,7 +227,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
   public boolean timeInSchedule(final LocalDateTime localDateTime) {
     checkNotNull(localDateTime, "localDateTime");
 
-    // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert it to 0
+    // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match allowed range of 0-6
     return getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
       && getMonths().contains(localDateTime.getMonthOfYear())
       && getDays().contains(localDateTime.getDayOfMonth())

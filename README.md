@@ -10,7 +10,7 @@ What is Omicron?
 
 Java implementation of crond with monitoring/alerting features. Works with the existing crontab file format.
 
-Third-party dependencies are: guava, joda-time, junit, and javax mail.
+Third-party dependencies are: maven, guava, joda-time, junit, and javax mail.
 
 Current Functional Requirements
 ===============================
@@ -25,7 +25,8 @@ Current Functional Requirements
 
 * !!execute as user requires root privs!!
 
-* Tested as a resident init.d service. Note: service script not included
+* Tested as a root-level init.d service. Note: service script not included, however service script examples abound on
+  the internet
 
 See conf/crontab and conf/omicron.conf for deployment config examples
 
@@ -48,4 +49,13 @@ Notes & Concerns
 
 * SECURITY: Use at your own risk.
 
+Installation
+============
 
+* get the source, create the package
+  - mvn clean package
+  - shaded jar is output to target/omicron-<VERSION>-SNAPSHOT.jar
+* deploy shaded jar to target system
+* deploy updated omicron.conf to target system
+* execute shaded jar (either via service script or as a background process)
+  - java -jar <jar file> <conf location>

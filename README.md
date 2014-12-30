@@ -18,7 +18,7 @@ Current Functional Requirements
 * JRE 7 or above
 
 * Linux platform tested
-  - OSX untested, might work OTB
+  - OSX untested, might work
   - Windows untested, platform specific functions will most likely fail (su/root checks)
 
 * Success/Fail alerting requires executable to support meaningful return codes. 0 expected to indicate success

@@ -236,8 +236,8 @@ public final class AlertManager {
         // Alerts are listed in order of crontab command and alert timestamp
         //
         // <crontab line>
-        //    FAIL/SUCCESS: <alert message>1
-        //    FAIL/SUCCESS: <alert message>1
+        //    FAIL/SUCCESS: <alert message>
+        //    FAIL/SUCCESS: <alert message>
         //
         // ... repeat for each crontab line with alert(s)
         //
@@ -260,11 +260,11 @@ public final class AlertManager {
             if (alert.isFailed()) {
               failedCount++;
 
-              bodyBuilder = bodyBuilder.append("\t\tFAIL: ");
+              bodyBuilder = bodyBuilder.append("\tFAIL: ");
             } else {
               successCount++;
 
-              bodyBuilder = bodyBuilder.append("\t\tSUCCESS: ");
+              bodyBuilder = bodyBuilder.append("\tSUCCESS: ");
             }
 
             bodyBuilder = bodyBuilder.append(alert.getMessage()).append('\n');

@@ -250,4 +250,26 @@ public class Configuration {
   public Chronology getChronology() {
     return Utils.timeZoneToChronology(getString(ConfigKey.TimeZone));
   }
+
+  @Override
+  public boolean equals(Object o){
+    return o instanceof Configuration
+      && this.configurationTimestamp == ((Configuration) o).getConfigurationTimestamp()
+      && configValuesMatch((Configuration) o);
+  }
+
+  private boolean configValuesMatch(final Configuration configuration){
+
+    for (ConfigKey configKey : ConfigKey.values()) {
+      if(configKey == ConfigKey.Unknown){
+        continue;
+      }
+
+      if(!getString(configKey).equals(configuration.getString(configKey))){
+        return false;
+      }
+    }
+
+    return true;
+  }
 }

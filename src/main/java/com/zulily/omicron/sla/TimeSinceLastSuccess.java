@@ -47,30 +47,54 @@ public final class TimeSinceLastSuccess implements Policy {
       return null;
     }
 
-    final long baseTimestamp = scheduledTask.getLastSuccessTimestamp() > Utils.DEFAULT_TIMESTAMP // if there is a last success timestamp
-      ? scheduledTask.getLastSuccessTimestamp() // use it
-      : scheduledTask.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp because the task has never succeeded
+    // The last activity timestamp will return the last success timestamp, or the very
+    // first execution timestamp if the task has never had a successful run
+    final long lastActiveTimestamp = getLastActiveTimestamp(scheduledTask);
 
-    final int minutesBetweenSuccess = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
+    final int minutesBetweenSuccessThreshold = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
 
-    final boolean failed = DateTime.now().getMillis() - baseTimestamp > TimeUnit.MINUTES.toMillis(minutesBetweenSuccess);
+    final long currentTimestamp = DateTime.now().getMillis();
 
-    return createAlert(scheduledTask, failed, baseTimestamp);
-  }
-
-  private Alert createAlert(final ScheduledTask scheduledTask, final boolean failed, long baseTimestamp) {
     final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
+
     final Chronology chronology = scheduledTask.getConfiguration().getChronology();
-    final long minutesAgo = TimeUnit.MILLISECONDS.toMinutes(DateTime.now().getMillis() - baseTimestamp);
-    // Alerts are displayed as grouped by the crontab command string, so there is
-    // no need to print it out in the alert message
+
+    final long minutesSinceLastActivity = TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - lastActiveTimestamp);
+
+    final boolean failed = currentTimestamp - lastActiveTimestamp > TimeUnit.MINUTES.toMillis(minutesBetweenSuccessThreshold);
+
+    // Alert body looks like:
+    //
+    // SUCCESS: Time_Since_Success-> last success at 20141230 00:10 America/Los_Angeles (2 minutes ago; threshold set to 20)
+    // FAILED: Time_Since_Success-> last success at 20141230 00:10 America/Los_Angeles (30 minutes ago; threshold set to 20)
+    // FAILED: Time_Since_Success-> never successfully run. First attempted execution at 20141230 00:10 America/Los_Angeles (30 minutes ago; threshold set to 20)
+
+    StringBuilder messageBuilder = new StringBuilder(getName()).append("->");
+
+    if (scheduledTask.getTotalSuccessCount() == 0 && failed) {
+      messageBuilder = messageBuilder.append(" never successfully run. First attempted execution at ");
+    } else {
+      messageBuilder = messageBuilder.append(" last success was at ");
+    }
+
+    messageBuilder = messageBuilder.append((new LocalDateTime(lastActiveTimestamp, chronology)).toString("yyyyMMdd HH:mm"));
+    messageBuilder = messageBuilder.append(" ").append(chronology.getZone().toString());
+    messageBuilder = messageBuilder.append(" (").append(minutesSinceLastActivity).append(" minutes ago; threshold set to ").append(minutesBetweenSuccessThreshold).append(")");
+
     return new Alert(
       getName(),
-      String.format("%s: last success at %s (%s minutes ago)", getName(), (new LocalDateTime(baseTimestamp, chronology)).toString("yyyyMMdd HH:mm"), minutesAgo),
+      messageBuilder.toString(),
       crontabExpression.getLineNumber(),
       crontabExpression.getRawExpression(),
       failed
     );
+
+  }
+
+  private long getLastActiveTimestamp(final ScheduledTask scheduledTask) {
+    return scheduledTask.getTotalSuccessCount() > 0 // if there is a last success at all
+      ? scheduledTask.getLastSuccessTimestamp() // use the timestamp
+      : scheduledTask.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp for a baseline
   }
 
   @Override

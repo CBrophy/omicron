@@ -317,12 +317,12 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
   @Override
   public boolean equals(Object o) {
 
-    // Involving the config timestamp ensures that config updates
+    // Involving the config match ensures that config updates
     // will differentiate scheduled tasks as new revisions when the crontab
     // is reloaded
     return o instanceof ScheduledTask
       && this.crontabExpression.equals(((ScheduledTask) o).crontabExpression)
-      && this.configuration.getConfigurationTimestamp() == ((ScheduledTask) o).configuration.getConfigurationTimestamp();
+      && this.configuration.equals(((ScheduledTask) o).getConfiguration());
   }
 
   @Override

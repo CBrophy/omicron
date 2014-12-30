@@ -1,7 +1,7 @@
 omicron
 =======
 
-Copyright 2014 - zulily, inc.
+Copyright (C) 2014 zulily, Inc.
 
 Read the LICENSE file for terms of use
 

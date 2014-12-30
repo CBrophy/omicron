@@ -19,7 +19,6 @@ import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
-import com.zulily.omicron.conf.Configuration;
 import org.joda.time.Chronology;
 import org.joda.time.DateTimeZone;
 import org.joda.time.chrono.ISOChronology;

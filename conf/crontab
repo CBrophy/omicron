@@ -1,6 +1,14 @@
- 
+# crontab-style comments are bypassed
+#
+# * Omicron will interpret lines starting with "#override:"
+#   as task-specific config parameter overrides
+#
+#   NOTE: An override will be ignored if the next non-blank line is commented out
 
-* * * * * root echo "every minute"
+# variable substitution works as expected
+HELLO="hello world"
+
+* * * * * root echo "say $HELLO every minute"
 */2 * * * * root echo "every two minutes"
 */5 * * * * root echo "every five minutes"
 */3 * * * * root echo "every three minutes"
@@ -10,4 +18,9 @@
 
 #override:task.duplicate.allowed.count = 2,sla.minutes.since.success = 1
 */2 * * * * root echo "every two minutes and fail" & exit 120
+
+#override:task.duplicate.allowed.count = 2,sla.minutes.since.success = 1
+
+# this commented line will cause the above override to be ignored, the blank line is ignored
+*/3 * * * * root echo "every three minutes and fail" & exit 120
 

@@ -1,31 +1,37 @@
 omicron
 =======
 
-Java implementation of crond++ that works with the existing crontab file format.
-The configured dependencies are on guava, joda, the omnipresent junit, and javax mail.
+Java implementation of crond with monitoring/alerting features. Works with the existing crontab file format.
 
-Why not just use crond?
+Third-party dependencies are: guava, joda-time, junit, and javax mail.
 
-crond while beautiful in its simplicity, lacks a few capabilities that help development teams
-manage and monitor critical jobs across instances.
+Current Functional Requirements
+===============================
 
-The primary crond "issues" that lead to the creation of this software:
-* crond floods the machine with scheduled jobs even if they're slower than the configured schedule frequency.
-* crond "knows" when a job is supposed to have run, but does not manage and monitor how
-  jobs are adhering to the schedule
+* JRE 7 or above
 
-See sample conf/omicron.conf and conf/crontab for deployment examples
+* Linux platform only.
+  - OSX untested, should work
+  - Windows untested, platform specific functions will most likely not work
+
+* Success/Fail alerting requires executable to support meaningful return codes. 0 expected to indicate success
+
+* Tested as a resident init.d service, service script not included
+
+See conf/crontab and conf/omicron.conf for deployment config examples
 
 Features
+========
 
 1.0
 * Can be configured to prevent the same job from executing endlessly if the last scheduled execution is still running.
-* Can be configured to send alerts if a job has been returning failure codes for a given amount of time
-* Will send all-clear success alerts if a job recovers on its own
+* Can be configured to send alerts if a job has been unsuccessful after a given amount of time
+* Will send all-clear success alerts if a job alert recovers on its own
 * Email-based alerting or log-based alerting
 * Can specify a timezone for evaluation of job schedules
 * Per-job configuration of config parameters in crontab - still compatible with crond
 * Tracks statistics of jobs as they execute
+* Logs contain exact command being executed for helpful task debugging (variable substitution complete)
 
 
 

@@ -1,6 +1,13 @@
 omicron
 =======
 
+Copyright 2014 - zulily, inc.
+
+Read the LICENSE file for terms of use
+
+What is Omicron?
+================
+
 Java implementation of crond with monitoring/alerting features. Works with the existing crontab file format.
 
 Third-party dependencies are: guava, joda-time, junit, and javax mail.
@@ -10,13 +17,15 @@ Current Functional Requirements
 
 * JRE 7 or above
 
-* Linux platform only.
-  - OSX untested, should work
-  - Windows untested, platform specific functions will most likely not work
+* Linux platform tested
+  - OSX untested, might work OTB
+  - Windows untested, platform specific functions will most likely fail (su/root checks)
 
 * Success/Fail alerting requires executable to support meaningful return codes. 0 expected to indicate success
 
-* Tested as a resident init.d service, service script not included
+* !!execute as user requires root privs!!
+
+* Tested as a resident init.d service. Note: service script not included
 
 See conf/crontab and conf/omicron.conf for deployment config examples
 
@@ -33,5 +42,10 @@ Features
 * Tracks statistics of jobs as they execute
 * Logs contain exact command being executed for helpful task debugging (variable substitution complete)
 
+
+Notes & Concerns
+================
+
+* SECURITY: Use at your own risk.
 
 

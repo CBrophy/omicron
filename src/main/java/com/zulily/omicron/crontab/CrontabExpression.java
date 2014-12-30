@@ -50,6 +50,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * # |  |  |  |  .---- day of week (0 - 7)  (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
  * # |  |  |  |  |
  * # *  *  *  *  * user-name  command to be executed
+ *
+ * NOTE ABOUT DAY OF WEEK
+ * range specifications cannot span the end-of-week or end-of-year divide, i.e. "fri-tue"
+ * but must be expressed as the equivalent lists of ranges: fri-sat,sun-tue
  */
 public final class CrontabExpression implements Comparable<CrontabExpression> {
 
@@ -114,6 +118,10 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     // 1) Split value by commas (lists) and for each csv.n:
     // 2) Split value by slashes (range/rangeStep)
     // 3) Match all for '*' or split hyphenated range for rangeStart and rangeEnd
+    //
+    // Converts sun==7 -> sun==0 to make schedule interpretation logic easier in timeInSchedule() evaluation
+    // NOTE: this breaks week spanning ranges such as fri-tue, which instead must
+    //       be handled as a list of ranges fri-sat,sun-tue
 
     final List<String> csvParts = Utils.COMMA_SPLITTER.splitToList(expression);
 
@@ -189,6 +197,8 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
       }
 
+      checkArgument(rangeStart <= rangeEnd, "Invalid cron expression for %s (range start must not be greater than range end): %s", expressionPart.name(), expression);
+
       for (int runTime = rangeStart; runTime <= rangeEnd; runTime += rangeStep) {
         results.add(runTime);
       }
@@ -227,7 +237,8 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
   public boolean timeInSchedule(final LocalDateTime localDateTime) {
     checkNotNull(localDateTime, "localDateTime");
 
-    // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match allowed range of 0-6
+    // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match crontab expression range of 0-6
+    // see evaluateExpressionPart() comments for more information
     return getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
       && getMonths().contains(localDateTime.getMonthOfYear())
       && getDays().contains(localDateTime.getDayOfMonth())
@@ -242,6 +253,8 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
   @Override
   public boolean equals(Object o) {
+    // This instance is expected/utilized as
+    // if to be 1:1 with distinct crontab expressions
     return o instanceof CrontabExpression
       && this.rawExpression.equalsIgnoreCase(((CrontabExpression) o).rawExpression);
   }
@@ -255,6 +268,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
   public int compareTo(CrontabExpression o) {
     checkNotNull(o, "comparing null to CrontabExpression instance");
 
+    // This ordering is for display & evaluation order
     return ComparisonChain.start()
       .compare(this.lineNumber, o.lineNumber)
       .compare(this.rawExpression, o.rawExpression)

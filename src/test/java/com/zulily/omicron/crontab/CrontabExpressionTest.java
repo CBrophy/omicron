@@ -172,12 +172,23 @@ public class CrontabExpressionTest {
     String testLine3 = "* * * * 1-6/6  root    cd / && run-parts --report /etc/cron.hourly";
     String testLine4 = "* * * * 2-6  root    cd / && run-parts --report /etc/cron.hourly";
     String testLine5 = "* * * * sun-tue,thu-sat  root    cd / && run-parts --report /etc/cron.hourly";
+    String testLine6 = "* * * * fri-tue  root    cd / && run-parts --report /etc/cron.hourly";
 
     CrontabExpression expression1 = new CrontabExpression(1,testLine1);
     CrontabExpression expression2 = new CrontabExpression(1,testLine2);
     CrontabExpression expression3 = new CrontabExpression(1,testLine3);
     CrontabExpression expression4 = new CrontabExpression(1,testLine4);
     CrontabExpression expression5 = new CrontabExpression(1,testLine5);
+
+    String message = "";
+    try {
+      // Should be an invalid expression
+      CrontabExpression expression6 = new CrontabExpression(1, testLine6);
+    } catch (IllegalArgumentException e) {
+      message = e.getMessage();
+    }
+
+    assertTrue(message.contains(ExpressionPart.DaysOfWeek.name()));
 
     assertTrue(Range.closed(0, 6).containsAll(expression1.getDaysOfWeek()) && expression1.getDaysOfWeek().size() == 7);
 

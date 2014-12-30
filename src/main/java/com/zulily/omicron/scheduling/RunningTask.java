@@ -133,6 +133,8 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   public int compareTo(final RunningTask o) {
     checkNotNull(o, "cannot compare null values");
 
+    // This ordering in intended to be used for the
+    // chronologically-dependent loop in ScheduledTask.sweepRunningTasks
     return ComparisonChain.start()
       .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
       .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
@@ -144,6 +146,8 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   @Override
   public boolean equals(Object o) {
 
+    // This equivalence test is required to allow
+    // RunningTask objects to be safely put into sorted sets/maps
     return o instanceof RunningTask
       && this.commandLine.equals(((RunningTask) o).commandLine)
       && this.pid.get() == ((RunningTask) o).pid.get()

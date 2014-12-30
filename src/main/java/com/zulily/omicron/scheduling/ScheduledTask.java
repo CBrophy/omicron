@@ -304,8 +304,10 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   @Override
   public int compareTo(ScheduledTask o) {
-    checkNotNull(o, "scheduledTask Compare");
+    checkNotNull(o, "scheduledTask Compare against null");
 
+    // These are logical 1:1 instances with distinct crontab expressions
+    // and are utilized as such
     return this.crontabExpression.compareTo(o.crontabExpression);
   }
 

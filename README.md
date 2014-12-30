@@ -1,4 +1,4 @@
-omicron
+Omicron
 =======
 
 Copyright (C) 2014 zulily, Inc.

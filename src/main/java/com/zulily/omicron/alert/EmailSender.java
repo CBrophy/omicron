@@ -80,8 +80,8 @@ final class EmailSender {
   }
 
   public void send(final String subject, final String message) throws MessagingException {
-    checkArgument(!Strings.isNullOrEmpty(subject.trim()), "Cannot send email with a null or empty subject");
-    checkArgument(!Strings.isNullOrEmpty(message.trim()), "Cannnot send email with a null or empty message");
+    checkArgument(!Strings.isNullOrEmpty(subject), "Cannot send email with a null or empty subject");
+    checkArgument(!Strings.isNullOrEmpty(message), "Cannot send email with a null or empty message");
 
     if (EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())) {
       dumpEmail(subject, message);
@@ -100,7 +100,7 @@ final class EmailSender {
 
   public void sendHTML(final String subject, final String message) throws MessagingException {
     checkArgument(!Strings.isNullOrEmpty(subject), "Cannot send email with a null or empty subject");
-    checkArgument(!Strings.isNullOrEmpty(message), "Cannnot send email with a null or empty message");
+    checkArgument(!Strings.isNullOrEmpty(message), "Cannot send email with a null or empty message");
 
     if (EXAMPLE_ADDRESS.equalsIgnoreCase(from.toString())) {
       dumpEmail(subject, message);

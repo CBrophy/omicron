@@ -25,7 +25,6 @@ import com.zulily.omicron.scheduling.ScheduledTask;
  * what to ultimately do with the results
  */
 public interface Policy {
-
   /**
    * Evaluate the statistics or properties of the provided ScheduledTask instance
    * and produce either a successful or failed alert instance.
@@ -36,4 +35,6 @@ public interface Policy {
   Alert evaluate(final ScheduledTask scheduledTask);
 
   String getName();
+
+  boolean isDisabled(final ScheduledTask scheduledTask);
 }

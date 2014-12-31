@@ -86,7 +86,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   private boolean shouldRunNow(final LocalDateTime localDateTime) {
 
-    if (crontabExpression.timeInSchedule(localDateTime)) {
+    if (isRunnable() && crontabExpression.timeInSchedule(localDateTime)) {
 
       if (!isActive()) {
         info("{0} skipped execution because it is inactive", commandLine);
@@ -115,6 +115,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
    * @return True if a task was launched, False otherwise
    */
   public boolean run() {
+
     final LocalDateTime localDateTime = LocalDateTime.now(configuration.getChronology());
 
     // Cleans out old process pointers and records stats
@@ -284,6 +285,10 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   public TreeMap<String, Alert> getPolicyAlerts() {
     return policyAlerts;
+  }
+
+  public boolean isRunnable(){
+    return !(crontabExpression.isMalformed() || crontabExpression.isCommented());
   }
 
   public boolean isActive() {

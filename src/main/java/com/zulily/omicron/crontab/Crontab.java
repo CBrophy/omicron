@@ -81,6 +81,7 @@ public final class Crontab {
       int lineNumber = 0;
 
       final ImmutableList<String> lines = Files.asCharSource(crontabFile, Charset.defaultCharset()).readLines();
+
       ImmutableMap<ConfigKey, String> overrideMap = null;
 
       for (final String line : lines) {
@@ -100,20 +101,6 @@ public final class Crontab {
           continue;
         }
 
-        // Skip commented rows.
-        // If the commented line is the first row encountered after an override keyword, ignore the overrides (assume they were for this line)
-        if ('#' == trimmed.charAt(0)) {
-
-          if (overrideMap != null) {
-
-            warn("[Line: {0}] The previous override map will be ignored because this line is commented", String.valueOf(lineNumber));
-
-            overrideMap = null;
-          }
-
-          continue;
-        }
-
         // If it's a variable assignment, save it in the map
         // and skip to the next row
         final List<String> variableParts = getVariable(trimmed);
@@ -124,6 +111,16 @@ public final class Crontab {
         }
 
         try {
+
+          final CrontabExpression crontabExpression = new CrontabExpression(lineNumber, trimmed);
+
+          if(crontabExpression.isCommented() && crontabExpression.isMalformed()){
+            // assumed to be a general comment
+            continue;
+          }
+
+          // Commented rows that successfully parse as expressions are loaded anyways, to
+          // allow for alerting of "forgotten" disabled tasks
 
           results.add(new CrontabExpression(lineNumber, trimmed));
 

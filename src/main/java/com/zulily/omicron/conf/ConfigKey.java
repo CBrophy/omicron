@@ -27,15 +27,23 @@ public enum ConfigKey {
 
   CrontabPath("crontab.path", "/etc/crontab", false),
   TimeZone("timezone", "UTC", false),
+
+  // Since email output is grouped into a single message, the email config cannot currently be overridden (Issue #14)
   AlertEmailEnabled("alert.email.enabled", "false", true),
   AlertEmailAddressTo("alert.email.address.to", "someone@example.com", false),
   AlertEmailAddressFrom("alert.email.address.from", "someone@example.com", false),
   AlertEmailSmtpHost("alert.email.smtp.host", "localhost", false),
   AlertEmailSmtpPort("alert.email.smtp.port", "25", false),
+
   AlertMinutesDelayRepeat("alert.minutes.delay.repeat", "20", true),
+
   TaskDuplicateAllowedCount("task.duplicate.allowed.count", "2", true),
   TaskCriticalReturnCode("task.critical.return.code", "100", true), // expected to be between 0 and 255 according to bash man pages
+
   SLAMinutesSinceSuccess("sla.minutes.since.success", "60", true),
+  SLACommentedExpressionAlertDelayMinutes("sla.commented.expression.alert.delay.minutes", "-1", true),
+  SLAMalformedExpressionAlertDelayMinutes("sla.malformed.expression.alert.delay.minutes", "-1", true),
+
   Unknown("", "", false);
 
   private final String rawName;

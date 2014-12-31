@@ -93,6 +93,10 @@ public final class AlertManager {
 
     for (Policy slaPolicy : slaPolicies) {
 
+      if(slaPolicy.isDisabled(scheduledTask)){
+        continue;
+      }
+
       final Alert newAlert = slaPolicy.evaluate(scheduledTask);
 
       if (newAlert != null) {

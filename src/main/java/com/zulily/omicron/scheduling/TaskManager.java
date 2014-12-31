@@ -33,7 +33,8 @@ import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 
 /**
- * Primary omicron engine class that launches task evaluation once every calendar minute.
+ * The container class for scheduled tasks, and the logical engine for launching tasks
+ * and triggering alert SLA evaluation.
  */
 public final class TaskManager {
   private final ArrayList<ScheduledTask> retiredScheduledTasks = Lists.newArrayList();
@@ -51,12 +52,13 @@ public final class TaskManager {
   }
 
   /**
-   * The main "work" routine in Omicron
+   * The main "work" routine in taskmanager
    * <p/>
-   * Blocks and wakes each second to check for and load updates from
-   * the crontab file, or to launch tasks that are scheduled to execute
-   * at the start of the current calendar minute
+   * Loops through the task list and attempts to run each
    *
+   * After tasks are run, the alert manager is triggered
+   * to evaluate the subsequent state of the tasks and send
+   * alerts accordingly
    */
   public void run() {
 

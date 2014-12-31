@@ -41,17 +41,17 @@ public final class TimeSinceLastSuccess implements Policy {
   @Override
   public Alert evaluate(final ScheduledTask scheduledTask) {
 
-    // The task has never been evaluated to run (it's new) - cannot alert yet
-    // so just return null
-    if (scheduledTask.getFirstExecutionTimestamp() == Utils.DEFAULT_TIMESTAMP) {
+    final int minutesBetweenSuccessThreshold = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
+
+    // The task has never been evaluated to run because it's new or it's not considered to be runnable to begin with
+    // We cannot logically evaluate this alert
+    if (!scheduledTask.isRunnable() || scheduledTask.getFirstExecutionTimestamp() == Utils.DEFAULT_TIMESTAMP) {
       return null;
     }
 
     // The last activity timestamp will return the last success timestamp, or the very
     // first execution timestamp if the task has never had a successful run
     final long lastActiveTimestamp = getLastActiveTimestamp(scheduledTask);
-
-    final int minutesBetweenSuccessThreshold = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
 
     final long currentTimestamp = DateTime.now().getMillis();
 
@@ -100,5 +100,11 @@ public final class TimeSinceLastSuccess implements Policy {
   @Override
   public String getName() {
     return "Time_Since_Success";
+  }
+
+  @Override
+  public boolean isDisabled(final ScheduledTask scheduledTask) {
+    // Per config comment, -1 indicates disabled alert for this policy
+    return scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess) == -1;
   }
 }

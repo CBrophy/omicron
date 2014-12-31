@@ -24,6 +24,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.zulily.omicron.Utils;
+import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import java.util.HashMap;
@@ -34,6 +35,8 @@ import java.util.TreeSet;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.zulily.omicron.Utils.error;
+import static com.zulily.omicron.Utils.warn;
 
 /**
  * Parses a single cron row and returns a numerical schedule of run times
@@ -62,6 +65,9 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
   private final int lineNumber;
   private final String executingUser;
   private final String command;
+  private final boolean commented;
+  private final boolean malformed;
+  private final long timestamp;
 
   private final ImmutableMap<ExpressionPart, ImmutableSortedSet<Integer>> expressionRuntimes;
 
@@ -74,35 +80,69 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     checkNotNull(rawExpression, "rawExpression");
 
     checkArgument(lineNumber > 0, "lineNumber should be positive: %s", lineNumber);
+
+    this.timestamp = DateTime.now().getMillis();
+
     this.lineNumber = lineNumber;
 
-    this.rawExpression = rawExpression.trim();
-    checkArgument(!this.rawExpression.isEmpty(), "Empty expression");
-
-    final List<String> expressionParts = Utils.WHITESPACE_SPLITTER.splitToList(this.rawExpression);
-
-    checkArgument(expressionParts.size() >= ExpressionPart.values().length, "Uncommented line %s does not contain all expected parts: %s", lineNumber, rawExpression);
-
-    this.executingUser = expressionParts.get(ExpressionPart.ExecutingUser.ordinal());
-
-    // The command expression is everything after the user - just join it right back up with space separators
-    // side-effect: collapses whitespace in the command - may break some commands out there that require lots of whitespace?
-    this.command = Joiner.on(' ').join(Iterables.skip(expressionParts, ExpressionPart.values().length - 1));
-
-    // Fill in the runtime schedule based on the cron expressions
     final HashMap<ExpressionPart, ImmutableSortedSet<Integer>> runtimes = Maps.newHashMap();
 
-    for (ExpressionPart expressionPart : ExpressionPart.values()) {
+    checkArgument(!rawExpression.trim().isEmpty(), "Empty expression");
 
-      // Ignore anything starting with or coming after the user value
-      if (expressionPart.ordinal() >= ExpressionPart.ExecutingUser.ordinal()) {
-        continue;
+    this.commented = rawExpression.trim().startsWith("#");
+
+    this.rawExpression = this.commented ? rawExpression.trim().substring(1).trim() : rawExpression.trim();
+
+    boolean evaluationError = false;
+
+    String userString = "";
+
+    String commandString = "";
+
+    try {
+
+      final List<String> expressionParts = Utils.WHITESPACE_SPLITTER.splitToList(this.rawExpression);
+
+      checkArgument(expressionParts.size() >= ExpressionPart.values().length, "Line %s does not contain all expected parts: %s", lineNumber, this.rawExpression);
+
+      userString = expressionParts.get(ExpressionPart.ExecutingUser.ordinal());
+
+      // The command expression is everything after the user - just join it right back up with space separators
+      // side-effect: collapses whitespace in the command - may break some commands out there that require lots of whitespace?
+      commandString = Joiner.on(' ').join(Iterables.skip(expressionParts, ExpressionPart.values().length - 1));
+
+      // Fill in the runtime schedule based on the cron expressions
+
+
+      for (ExpressionPart expressionPart : ExpressionPart.values()) {
+
+        // Ignore anything starting with or coming after the user value
+        if (expressionPart.ordinal() >= ExpressionPart.ExecutingUser.ordinal()) {
+          continue;
+        }
+
+        runtimes.put(expressionPart, evaluateExpressionPart(expressionPart, expressionParts.get(expressionPart.ordinal())));
       }
 
-      runtimes.put(expressionPart, evaluateExpressionPart(expressionPart, expressionParts.get(expressionPart.ordinal())));
+    } catch (Exception e) {
+
+      if(!this.commented) {
+
+        error("[Line: {0}] {1}", String.valueOf(lineNumber), e.getMessage());
+
+        evaluationError = true;
+
+      } else {
+        warn("[Line: {0}] Skipped - assumed to be general comment due to interpretation error: {1}", String.valueOf(lineNumber), e.getMessage());
+      }
+
     }
 
+    this.malformed = evaluationError;
+    this.executingUser = userString;
+    this.command = commandString;
     this.expressionRuntimes = ImmutableMap.copyOf(runtimes);
+
   }
 
   /**
@@ -232,6 +272,18 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
   public int getLineNumber() {
     return lineNumber;
+  }
+
+  public boolean isCommented(){
+    return this.commented;
+  }
+
+  public boolean isMalformed(){
+    return this.malformed;
+  }
+
+  public long getTimestamp() {
+    return timestamp;
   }
 
   public boolean timeInSchedule(final LocalDateTime localDateTime) {

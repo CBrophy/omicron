@@ -35,7 +35,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class Alert implements Comparable<Alert> {
 
   private final boolean failed;
-  private final long timstamp;
+  private final long timestamp;
   private final String policyName;
   private final String message;
   private final int lineNumber;
@@ -56,7 +56,7 @@ public final class Alert implements Comparable<Alert> {
                final String commandLine,
                final boolean failed) {
 
-    this.timstamp = DateTime.now().getMillis();
+    this.timestamp = DateTime.now().getMillis();
     this.policyName = checkNotNull(policyName, "policyName");
     this.message = checkNotNull(message, "message");
     this.lineNumber = lineNumber;
@@ -67,8 +67,8 @@ public final class Alert implements Comparable<Alert> {
     this.failed = failed;
   }
 
-  public long getTimstamp() {
-    return timstamp;
+  public long getTimestamp() {
+    return timestamp;
   }
 
   public String getPolicyName() {
@@ -104,7 +104,7 @@ public final class Alert implements Comparable<Alert> {
     checkNotNull(o, "compare to null instance");
 
     return ComparisonChain.start()
-      .compare(timstamp, o.timstamp)
+      .compare(timestamp, o.timestamp)
       .compare(policyName, o.policyName)
       .compare(message, o.message)
       .result();
@@ -113,7 +113,7 @@ public final class Alert implements Comparable<Alert> {
   @Override
   public boolean equals(Object o) {
     return o instanceof Alert
-      && this.timstamp == ((Alert) o).timstamp
+      && this.timestamp == ((Alert) o).timestamp
       && this.policyName.equals(((Alert) o).policyName)
       && this.message.equals(((Alert) o).message)
       && this.lineNumber == ((Alert) o).lineNumber

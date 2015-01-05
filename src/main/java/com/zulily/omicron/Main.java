@@ -31,6 +31,9 @@ import static com.zulily.omicron.Utils.warn;
 
 public final class Main {
 
+  private static final String DEFAULT_CONFIG_PATH = "/etc/omicron/omicron.conf";
+  private static final String DEFAULT_LOG_FORMAT = "[%1$tc] %4$s: %5$s %n";
+
   public static void main(final String[] args) {
 
     if (args == null || (args.length > 0 && args[0].contains("?"))) {
@@ -41,11 +44,11 @@ public final class Main {
     // see doc for java.util.logging.SimpleFormatter
     // log output will look like:
     // [Tue Dec 16 10:29:07 PST 2014] INFO: <message>
-    System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tc] %4$s: %5$s %n");
+    System.setProperty("java.util.logging.SimpleFormatter.format", DEFAULT_LOG_FORMAT);
 
     try {
 
-      Configuration configuration = new Configuration(args.length > 0 ? args[0].trim() : "/etc/omicron/omicron.conf");
+      Configuration configuration = new Configuration(args.length > 0 ? args[0].trim() : DEFAULT_CONFIG_PATH);
 
       Crontab crontab = new Crontab(configuration);
 

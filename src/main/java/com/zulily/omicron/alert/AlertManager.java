@@ -24,6 +24,8 @@ import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.scheduling.ScheduledTask;
+import com.zulily.omicron.sla.CommentedExpression;
+import com.zulily.omicron.sla.MalformedExpression;
 import com.zulily.omicron.sla.Policy;
 import com.zulily.omicron.sla.TimeSinceLastSuccess;
 import org.joda.time.DateTime;
@@ -50,7 +52,10 @@ import static com.zulily.omicron.Utils.warn;
 public final class AlertManager {
 
   private final ExecutorService threadPool = Executors.newFixedThreadPool(1);
-  private final ImmutableList<Policy> slaPolicies = ImmutableList.of((Policy) new TimeSinceLastSuccess());
+  private final ImmutableList<Policy> slaPolicies = ImmutableList.of(
+    (Policy) new TimeSinceLastSuccess(),
+    (Policy) new MalformedExpression(),
+    (Policy) new CommentedExpression());
 
   // Email sender can be updated by a live config change, while the pending policy lists won't change
   private EmailSender email;

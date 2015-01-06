@@ -96,7 +96,7 @@ public final class Crontab {
         if (line.startsWith(OVERRIDE_KEYWORD)) {
           overrideMap = getOverrideConfiguration(line);
 
-          info("[Line: {0}] Loaded {1} overrides for next uncommented task line", String.valueOf(lineNumber), String.valueOf(overrideMap.size()));
+          info("[Line: {0}] Loaded {1} overrides for next task line", String.valueOf(lineNumber), String.valueOf(overrideMap.size()));
 
           continue;
         }
@@ -115,14 +115,16 @@ public final class Crontab {
           final CrontabExpression crontabExpression = new CrontabExpression(lineNumber, trimmed);
 
           if(crontabExpression.isCommented() && crontabExpression.isMalformed()){
-            // assumed to be a general comment
+            info("[Line: {0}] Skipping general comment", String.valueOf(lineNumber));
             continue;
           }
 
+          // crontabExpression.isCommented() || crontabExpression.isMalformed()
           // Commented rows that successfully parse as expressions are loaded anyways, to
           // allow for alerting of "forgotten" disabled tasks
-
-          results.add(new CrontabExpression(lineNumber, trimmed));
+          // Likewise, uncommented but malformed rows are also loaded so that malformed
+          // alerting can be done on them
+          results.add(crontabExpression);
 
           // The previous non-blank/commented line is an unassociated override map. Associate with this row
           if (overrideMap != null) {

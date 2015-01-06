@@ -58,7 +58,8 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   public void run() {
     try {
 
-      if (!Utils.isRunningAsRoot()) {
+      if (!canStart()) {
+        // TODO: more nuance - there can be other reasons a task cannot start
         warn("Not running as root. Cannot execute: {0}", this.commandLine);
         return;
       }
@@ -174,6 +175,10 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
   public boolean isDone() {
     return endTimeMilliseconds.get() > -1L;
+  }
+
+  public boolean canStart() {
+    return Utils.isRunningAsRoot();
   }
 
   public void start() {

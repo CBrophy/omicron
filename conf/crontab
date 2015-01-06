@@ -19,8 +19,9 @@ HELLO="hello world"
 #override:task.duplicate.allowed.count = 2,sla.minutes.since.success = 1
 */2 * * * * root echo "every two minutes and fail" & exit 120
 
-#override:task.duplicate.allowed.count = 2,sla.minutes.since.success = 1
+#override:sla.commented.expression.alert.delay.minutes = 1
+#*/3 * * * * root echo "every three minutes but commented"
 
-# this commented line will cause the above override to be ignored, the blank line is ignored
-*/3 * * * * root echo "every three minutes and fail" & exit 120
+#override:sla.malformed.expression.alert.delay.minutes = 1
+*/3 * * * root echo "every three minutes - malformed"
 

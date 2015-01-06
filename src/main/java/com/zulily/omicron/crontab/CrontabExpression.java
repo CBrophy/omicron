@@ -53,7 +53,7 @@ import static com.zulily.omicron.Utils.warn;
  * # |  |  |  |  .---- day of week (0 - 7)  (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
  * # |  |  |  |  |
  * # *  *  *  *  * user-name  command to be executed
- *
+ * <p/>
  * NOTE ABOUT DAY OF WEEK
  * range specifications cannot span the end-of-week or end-of-year divide, i.e. "fri-tue"
  * but must be expressed as the equivalent lists of ranges: fri-sat,sun-tue
@@ -73,7 +73,8 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
   /**
    * Constructor
-   * @param lineNumber the line number in the crontab
+   *
+   * @param lineNumber    the line number in the crontab
    * @param rawExpression the string value of the line as it appears in the crontab
    */
   public CrontabExpression(final int lineNumber, final String rawExpression) {
@@ -93,7 +94,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
     this.rawExpression = this.commented ? rawExpression.trim().substring(1).trim() : rawExpression.trim();
 
-    boolean evaluationError = false;
+    boolean evaluationError = true;
 
     String userString = "";
 
@@ -124,18 +125,12 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
         runtimes.put(expressionPart, evaluateExpressionPart(expressionPart, expressionParts.get(expressionPart.ordinal())));
       }
 
+      evaluationError = false;
+
     } catch (Exception e) {
-
-      if(!this.commented) {
-
-        error("[Line: {0}] {1}", String.valueOf(lineNumber), e.getMessage());
-
-        evaluationError = true;
-
-      } else {
-        warn("[Line: {0}] Skipped - assumed to be general comment due to interpretation error: {1}", String.valueOf(lineNumber), e.getMessage());
+      if (!this.isCommented()) {
+        warn("[Line: {0}] Interpretation error: {1}", String.valueOf(lineNumber), e.getMessage());
       }
-
     }
 
     this.malformed = evaluationError;
@@ -274,11 +269,11 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     return lineNumber;
   }
 
-  public boolean isCommented(){
+  public boolean isCommented() {
     return this.commented;
   }
 
-  public boolean isMalformed(){
+  public boolean isMalformed() {
     return this.malformed;
   }
 

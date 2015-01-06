@@ -173,51 +173,68 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
         if (runningTask.getReturnCode() == 0) {
 
-          // The task returned a success code
-
           this.lastSuccessTimestamp = runningTask.getStartTimeMilliseconds();
 
-          this.criticalFailuresSinceLastSuccess = 0;
-          this.expectedFailuresSinceLastSuccess = 0;
-
-          this.averageSuccessDurationMilliseconds = rollAverage(
-            this.averageSuccessDurationMilliseconds,
-            duration,
-            ++this.totalSuccessCount
-          );
+          this.updateStatsForSuccess(duration);
 
         } else if (runningTask.getReturnCode() < configuration.getInt(ConfigKey.TaskCriticalReturnCode)) {
 
           // The task returned a code for "expected failure"
           // aka. not notification worthy, but not counted against success rate
 
-          this.expectedFailuresSinceLastSuccess++;
-
-          this.averageExpectedFailureDurationMilliseconds = rollAverage(
-            this.averageExpectedFailureDurationMilliseconds,
-            duration,
-            ++this.totalExpectedFailureCount
-          );
+          this.updateStatsForExpectedFailure(duration);
 
         } else {
 
           // Any other code is considered a critical failure
           // and will result in notification
 
-          this.criticalFailuresSinceLastSuccess++;
-
-          this.averageCriticalFailureDurationMilliseconds = rollAverage(
-            this.averageCriticalFailureDurationMilliseconds,
-            duration,
-            ++this.totalCriticalFailureCount
-          );
-
-          info("Scheduled task critical failure detected: {0}", this.toString());
+          this.updateStatsForCriticalFailure(duration);
         }
 
+      } else if (!runningTask.canStart()){
+
+        runningTasks.remove(index);
+
+        this.updateStatsForCriticalFailure(0L);
       }
 
     }
+
+  }
+
+  private void updateStatsForSuccess(final long duration){
+    this.criticalFailuresSinceLastSuccess = 0;
+    this.expectedFailuresSinceLastSuccess = 0;
+
+    this.averageSuccessDurationMilliseconds = rollAverage(
+      this.averageSuccessDurationMilliseconds,
+      duration,
+      ++this.totalSuccessCount
+    );
+  }
+
+  private void updateStatsForExpectedFailure(final long duration) {
+    this.expectedFailuresSinceLastSuccess++;
+
+    this.averageExpectedFailureDurationMilliseconds = rollAverage(
+      this.averageExpectedFailureDurationMilliseconds,
+      duration,
+      ++this.totalExpectedFailureCount
+    );
+  }
+
+  private void updateStatsForCriticalFailure(final long duration){
+
+    this.criticalFailuresSinceLastSuccess++;
+
+    this.averageCriticalFailureDurationMilliseconds = rollAverage(
+      this.averageCriticalFailureDurationMilliseconds,
+      duration,
+      ++this.totalCriticalFailureCount
+    );
+
+    info("Scheduled task critical failure detected: {0}", this.toString());
 
   }
 

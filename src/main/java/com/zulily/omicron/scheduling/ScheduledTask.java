@@ -173,7 +173,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
         if (runningTask.getReturnCode() == 0) {
 
-          this.lastSuccessTimestamp = runningTask.getStartTimeMilliseconds();
+          this.lastSuccessTimestamp = runningTask.getEndTimeMilliseconds();
 
           this.updateStatsForSuccess(duration);
 

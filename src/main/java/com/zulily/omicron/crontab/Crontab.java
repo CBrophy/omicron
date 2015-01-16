@@ -20,6 +20,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
@@ -51,7 +52,7 @@ public final class Crontab {
   public final static String OVERRIDE_KEYWORD = "#override:";
 
   private final ImmutableSet<CrontabExpression> crontabExpressions;
-  private final ImmutableMap<String, String> variables;
+  private final ImmutableList<CronVariable> variableList;
   private final ImmutableMap<Integer, Configuration> configurationOverrides;
   private final int badRowCount;
   private final long crontabTimestamp;
@@ -69,7 +70,7 @@ public final class Crontab {
 
     checkState(Utils.fileExistsAndCanRead(crontabFile), "Cannot read/find crontab: ", crontabFile.getAbsolutePath());
 
-    final HashMap<String, String> variableMap = Maps.newHashMap();
+    final List<CronVariable> cronVariables = Lists.newArrayList();
     final HashMap<Integer, Configuration> rawOverrideMap = Maps.newHashMap();
     final HashSet<CrontabExpression> results = Sets.newHashSet();
 
@@ -103,10 +104,10 @@ public final class Crontab {
 
         // If it's a variable assignment, save it in the map
         // and skip to the next row
-        final List<String> variableParts = getVariable(trimmed);
+        final CronVariable cronVariable = getVariable(trimmed);
 
-        if (variableParts.size() == 2) {
-          variableMap.put(variableParts.get(0), variableParts.get(1));
+        if (cronVariable != null) {
+          cronVariables.add(cronVariable);
           continue;
         }
 
@@ -146,7 +147,7 @@ public final class Crontab {
     }
 
     this.badRowCount = bad;
-    this.variables = ImmutableMap.copyOf(variableMap);
+    this.variableList = ImmutableList.copyOf(cronVariables);
     this.crontabExpressions = ImmutableSet.copyOf(results);
     this.configurationOverrides = ImmutableMap.copyOf(rawOverrideMap);
   }
@@ -188,14 +189,14 @@ public final class Crontab {
     return ImmutableMap.copyOf(result);
   }
 
-  private static List<String> getVariable(final String line) {
+  private static CronVariable getVariable(final String line) {
     // Crontab variables like ->
     // <VARNAME>=value
 
     final int firstEqualIndex = line.indexOf('=');
 
     if (firstEqualIndex == -1) {
-      return ImmutableList.of();
+      return null;
     }
 
     final int firstQuoteIndex = line.indexOf('"');
@@ -206,7 +207,7 @@ public final class Crontab {
 
     // Variable names cannot contain whitespace
     if (CharMatcher.WHITESPACE.matchesAnyOf(varName)) {
-      return ImmutableList.of();
+      return null;
     }
 
     String varValue = null;
@@ -218,7 +219,7 @@ public final class Crontab {
 
       // If first quote comes before first equal sign, cannot be a var assignment
       if (firstQuoteIndex < firstEqualIndex) {
-        return ImmutableList.of();
+        return null;
       }
 
       varValue = line.substring(firstQuoteIndex + 1, line.lastIndexOf('"'));
@@ -226,7 +227,7 @@ public final class Crontab {
       varValue = line.substring(firstEqualIndex + 1, line.length());
     }
 
-    return ImmutableList.of("$" + varName, varValue);
+    return new CronVariable(varName, varValue);
   }
 
   /**
@@ -253,8 +254,8 @@ public final class Crontab {
   /**
    * @return A map of the variables defined in the crontab
    */
-  public ImmutableMap<String, String> getVariables() {
-    return variables;
+  public ImmutableList<CronVariable> getVariables() {
+    return variableList;
   }
 
   /**

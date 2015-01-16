@@ -20,13 +20,14 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.zulily.omicron.alert.AlertManager;
 import com.zulily.omicron.conf.Configuration;
+import com.zulily.omicron.crontab.CronVariable;
 import com.zulily.omicron.crontab.Crontab;
 import com.zulily.omicron.crontab.CrontabExpression;
 import org.joda.time.DateTime;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.error;
@@ -55,7 +56,7 @@ public final class TaskManager {
    * The main "work" routine in taskmanager
    * <p/>
    * Loops through the task list and attempts to run each
-   *
+   * <p/>
    * After tasks are run, the alert manager is triggered
    * to evaluate the subsequent state of the tasks and send
    * alerts accordingly
@@ -195,11 +196,11 @@ public final class TaskManager {
     }
   }
 
-  private static String substituteVariables(final String line, final Map<String, String> variableMap) {
+  private static String substituteVariables(final String line, final List<CronVariable> variableList) {
     String substituted = line;
 
-    for (final Map.Entry<String, String> variableEntry : variableMap.entrySet()) {
-      substituted = substituted.replace(variableEntry.getKey(), variableEntry.getValue());
+    for (final CronVariable cronVariable : variableList) {
+      substituted = cronVariable.applySubstitution(substituted);
     }
 
     return substituted;

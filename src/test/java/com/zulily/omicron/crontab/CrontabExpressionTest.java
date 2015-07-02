@@ -221,5 +221,16 @@ public class CrontabExpressionTest {
     assertEquals("cd / && run-parts --report /etc/cron.hourly", expression1.getCommand());
   }
 
+  @Test
+  public void commentedAndUncommentedExpressionsDoNotMatch(){
+    String testLine1 = "* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
+    String testLine2 = "#* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
+
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(2,testLine2);
+
+    assertFalse(expression1.equals(expression2));
+  }
+
 
 }

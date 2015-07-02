@@ -303,7 +303,8 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     // This instance is expected/utilized as
     // if to be 1:1 with distinct crontab expressions
     return o instanceof CrontabExpression
-      && this.rawExpression.equalsIgnoreCase(((CrontabExpression) o).rawExpression);
+      && this.rawExpression.equalsIgnoreCase(((CrontabExpression) o).rawExpression)
+      && this.commented == ((CrontabExpression) o).commented;
   }
 
   @Override

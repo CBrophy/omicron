@@ -42,6 +42,7 @@
 
   <scm>
     <connection>scm:git:ssh://git@github.com:zulily/omicron.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:zulily/omicron.git</developerConnection>
     <tag>omicron-1.0</tag>
   </scm>
 

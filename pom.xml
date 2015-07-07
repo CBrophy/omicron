@@ -42,6 +42,11 @@
     <url>http://zulily.com</url>
   </organization>
 
+  <scm>
+    <connection>scm:git:ssh://git@github.com:zulily/omicron.git</connection>
+    <tag>v1.0</tag>
+  </scm>
+
 
   <properties>
     <guava.version>18.0</guava.version>

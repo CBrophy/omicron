@@ -18,7 +18,7 @@ package com.zulily.omicron.conf;
 /**
  * This enum represents the available defined values for
  * configuring omicron, as well as the defaults for those values
- * <p/>
+ * <p>
  * Omicron allows individual rows in the crontab to specify overrides
  * for the global config. Whether or not omicron will honor an override
  * is determined by the allowOverride property on each ConfigKey entry
@@ -39,10 +39,12 @@ public enum ConfigKey {
 
   TaskDuplicateAllowedCount("task.duplicate.allowed.count", "2", true),
   TaskCriticalReturnCode("task.critical.return.code", "100", true), // expected to be between 0 and 255 according to bash man pages
+  TaskTimeoutMinutes("task.timeout.minutes", "0", true), // The number of minutes to wait before omicron will kill a task - 0 disables this feature
 
   SLAMinutesSinceSuccess("sla.minutes.since.success", "60", true),
   SLACommentedExpressionAlertDelayMinutes("sla.commented.expression.alert.delay.minutes", "-1", true),
   SLAMalformedExpressionAlertDelayMinutes("sla.malformed.expression.alert.delay.minutes", "-1", true),
+  SLADowntime("sla.downtime", "", true), // Specify a hyphen-separated 24H time range during which SLA notifications will be suppressed: "11:00-18:00"
 
   Unknown("", "", false);
 
@@ -50,7 +52,7 @@ public enum ConfigKey {
   private final String defaultValue;
   private final boolean allowOverride;
 
-  private ConfigKey(final String rawName, final String defaultValue, final boolean allowOverride) {
+  ConfigKey(final String rawName, final String defaultValue, final boolean allowOverride) {
     this.rawName = rawName;
     this.defaultValue = defaultValue;
     this.allowOverride = allowOverride;

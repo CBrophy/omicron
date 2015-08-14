@@ -232,5 +232,26 @@ public class CrontabExpressionTest {
     assertFalse(expression1.equals(expression2));
   }
 
+  @Test
+  public void testMultipleLeadingHashMarks(){
+    String testLine1 = "# # #* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
+    String testLine2 = "##* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
+    String testLine3 = "#* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
+    String testLine4 = "* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
+
+    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
+    CrontabExpression expression2 = new CrontabExpression(2,testLine2);
+    CrontabExpression expression3 = new CrontabExpression(3,testLine3);
+    CrontabExpression expression4 = new CrontabExpression(4,testLine4);
+
+    assertFalse(expression1.equals(expression4));
+    assertFalse(expression2.equals(expression4));
+    assertFalse(expression3.equals(expression4));
+
+    assertTrue(expression1.equals(expression2));
+    assertTrue(expression1.equals(expression3));
+    assertTrue(expression2.equals(expression3));
+
+  }
 
 }

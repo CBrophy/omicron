@@ -15,6 +15,7 @@
  */
 package com.zulily.omicron.crontab;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableMap;
@@ -23,6 +24,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
+import com.sun.istack.internal.NotNull;
 import com.zulily.omicron.Utils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
@@ -41,10 +43,10 @@ import static com.zulily.omicron.Utils.warn;
 /**
  * Parses a single cron row and returns a numerical schedule of run times
  * for each part of the cron expression.
- * <p/>
+ * <p>
  * i.e.
  * 1-10/2 * * * * -> returns 1,3,5,7,9 day vals
- * <p/>
+ * <p>
  * # Example of job definition:
  * # .---------------- minute (0 - 59)
  * # |  .------------- hour (0 - 23)
@@ -53,7 +55,7 @@ import static com.zulily.omicron.Utils.warn;
  * # |  |  |  |  .---- day of week (0 - 7)  (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat
  * # |  |  |  |  |
  * # *  *  *  *  * user-name  command to be executed
- * <p/>
+ * <p>
  * NOTE ABOUT DAY OF WEEK
  * range specifications cannot span the end-of-week or end-of-year divide, i.e. "fri-tue"
  * but must be expressed as the equivalent lists of ranges: fri-sat,sun-tue
@@ -90,9 +92,11 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
     checkArgument(!rawExpression.trim().isEmpty(), "Empty expression");
 
-    this.commented = rawExpression.trim().startsWith("#");
+    final String coalescedExpression = coalesceHashmarks(rawExpression.trim());
 
-    this.rawExpression = this.commented ? rawExpression.trim().substring(1).trim() : rawExpression.trim();
+    this.commented = coalescedExpression.startsWith("#");
+
+    this.rawExpression = this.commented ? coalescedExpression.substring(1) : coalescedExpression;
 
     boolean evaluationError = true;
 
@@ -312,6 +316,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     return String.format("[Line: %s] %s", this.lineNumber, this.rawExpression);
   }
 
+  @SuppressWarnings("NullableProblems")
   @Override
   public int compareTo(CrontabExpression o) {
     checkNotNull(o, "comparing null to CrontabExpression instance");
@@ -321,6 +326,36 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
       .compare(this.lineNumber, o.lineNumber)
       .compare(this.rawExpression, o.rawExpression)
       .result();
+  }
+
+  // Transform all leading hashmarks/whitespace into a single hash mark
+  private String coalesceHashmarks(final String trimmedLine) {
+    checkNotNull(trimmedLine, "trimmedLine");
+
+    if (trimmedLine.isEmpty()) {
+      return trimmedLine;
+    }
+
+    boolean hashFound = false;
+
+    for (int index = 0; index < trimmedLine.length(); index++) {
+
+      if (trimmedLine.charAt(index) == '#') {
+        hashFound = true;
+        continue;
+      }
+
+      if (!CharMatcher.WHITESPACE.matches(trimmedLine.charAt(index))) {
+
+        if (!hashFound) {
+          return trimmedLine;  //Not commented - just short-circuit the loop
+        }
+
+        return "#" + trimmedLine.substring(index);
+      }
+    }
+
+    return trimmedLine;
   }
 
 }

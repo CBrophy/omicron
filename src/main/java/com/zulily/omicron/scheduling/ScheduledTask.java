@@ -131,7 +131,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
       info("[scheduled@{0} {1}] Executing: {2}", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), commandLine);
 
-      final RunningTask runningTask = new RunningTask(commandLine, executingUser);
+      final RunningTask runningTask = new RunningTask(commandLine, executingUser, configuration.getInt(ConfigKey.TaskTimeoutMinutes));
 
       // Most recent run to the start of the list to
       // allow ordered deque from the end of the list
@@ -324,6 +324,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
     return (newValue + ((n - 1) * currentAverage)) / n;
   }
 
+  @SuppressWarnings("NullableProblems")
   @Override
   public int compareTo(ScheduledTask o) {
     checkNotNull(o, "scheduledTask Compare against null");

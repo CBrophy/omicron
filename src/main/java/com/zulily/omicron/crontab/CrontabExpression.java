@@ -24,7 +24,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
-import com.sun.istack.internal.NotNull;
 import com.zulily.omicron.Utils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
@@ -37,7 +36,6 @@ import java.util.TreeSet;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.warn;
 
 /**

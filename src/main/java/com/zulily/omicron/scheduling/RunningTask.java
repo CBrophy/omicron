@@ -20,6 +20,7 @@ import com.zulily.omicron.Utils;
 import org.joda.time.DateTime;
 
 import java.lang.reflect.Field;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -40,6 +41,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private final String commandLine;
   private final String executingUser;
   private final Thread thread;
+  private final long timeoutMinutes;
 
   // These values are read by the parent thread to track execution
   private AtomicLong startTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
@@ -47,11 +49,14 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private AtomicInteger returnCode = new AtomicInteger(255);
   private AtomicLong pid = new AtomicLong(-1L);
 
-  public RunningTask(final String commandLine, final String executingUser) {
+  public RunningTask(final String commandLine,
+                     final String executingUser,
+                     final long timeoutMinutes) {
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.executingUser = checkNotNull(executingUser, "executingUser");
     this.launchTimeMilliseconds = DateTime.now().getMillis();
     this.thread = new Thread(this);
+    this.timeoutMinutes = timeoutMinutes;
   }
 
   @Override
@@ -74,7 +79,39 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
       this.pid.set(determinePid(process));
 
-      this.returnCode.set(Math.abs(process.waitFor()));
+      // If a timeout is set, then we must enter an isAlive loop test
+      // after the kill command is issued otherwise the unkillable
+      // process may pile up on the host
+      if(timeoutMinutes > 0){
+
+        int killCount = 0;
+
+        while(process.isAlive()) {
+
+          if(killCount > 1) {
+            error("{0} attempts to kill process after timeout have failed: {0}", String.valueOf(killCount), commandLine);
+          }
+
+          boolean finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES);
+
+          if (finished) {
+
+            this.returnCode.set(Math.abs(process.exitValue()));
+
+          } else {
+
+            warn("Running process timeout at {0} minutes: {1}", String.valueOf(timeoutMinutes), commandLine);
+
+            process.destroyForcibly();
+
+            killCount++;
+          }
+
+        }
+
+      } else {
+        this.returnCode.set(Math.abs(process.waitFor()));
+      }
 
       this.endTimeMilliseconds.set(DateTime.now().getMillis());
 
@@ -130,6 +167,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     return -1L;
   }
 
+  @SuppressWarnings("NullableProblems")
   @Override
   public int compareTo(final RunningTask o) {
     checkNotNull(o, "cannot compare null values");

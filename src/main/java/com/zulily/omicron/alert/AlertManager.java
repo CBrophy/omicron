@@ -91,7 +91,7 @@ public final class AlertManager {
 
   private void evaluateSLAs(final ScheduledTask scheduledTask) {
 
-    // Ignore alerts on in active tasks
+    // Ignore alerts on inactive tasks
     if (!scheduledTask.isActive()) {
       return;
     }
@@ -163,6 +163,11 @@ public final class AlertManager {
     final TreeMultimap<String, Alert> alertsToSend = TreeMultimap.create();
 
     for (final ScheduledTask scheduledTask : scheduledTasks) {
+
+      if(!scheduledTask.isActive()){
+        // Do not send alerts on inactive tasks
+        continue;
+      }
 
       evaluateSLAs(scheduledTask);
 

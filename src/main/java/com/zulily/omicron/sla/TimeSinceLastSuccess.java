@@ -19,7 +19,7 @@ import com.zulily.omicron.Utils;
 import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.crontab.CrontabExpression;
-import com.zulily.omicron.scheduling.ScheduledTask;
+import com.zulily.omicron.scheduling.CronJob;
 import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
@@ -28,36 +28,36 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * SLA {@link com.zulily.omicron.sla.Policy} that generates alerts based on how long it's been
- * since a {@link com.zulily.omicron.scheduling.ScheduledTask} has seen a successful return code
+ * since a {@link CronJob} has seen a successful return code
  */
 public final class TimeSinceLastSuccess implements Policy {
 
   /**
    * See {@link com.zulily.omicron.sla.Policy} class for function details
    *
-   * @param scheduledTask The task to be evaluated
+   * @param cronJob The task to be evaluated
    * @return Either a success or fail alert, or null if an evaluation can't be made
    */
   @Override
-  public Alert evaluate(final ScheduledTask scheduledTask) {
+  public Alert evaluate(final CronJob cronJob) {
 
-    final int minutesBetweenSuccessThreshold = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
+    final int minutesBetweenSuccessThreshold = cronJob.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
 
     // The task has never been evaluated to run because it's new or it's not considered to be runnable to begin with
     // We cannot logically evaluate this alert
-    if (!scheduledTask.isRunnable() || scheduledTask.getFirstExecutionTimestamp() == Utils.DEFAULT_TIMESTAMP) {
+    if (!cronJob.isRunnable() || cronJob.getFirstExecutionTimestamp() == Utils.DEFAULT_TIMESTAMP) {
       return null;
     }
 
     // The last activity timestamp will return the last success timestamp, or the very
     // first execution timestamp if the task has never had a successful run
-    final long lastActiveTimestamp = getLastActiveTimestamp(scheduledTask);
+    final long lastActiveTimestamp = getLastActiveTimestamp(cronJob);
 
     final long currentTimestamp = DateTime.now().getMillis();
 
-    final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
+    final CrontabExpression crontabExpression = cronJob.getCrontabExpression();
 
-    final Chronology chronology = scheduledTask.getConfiguration().getChronology();
+    final Chronology chronology = cronJob.getConfiguration().getChronology();
 
     final long minutesSinceLastActivity = TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - lastActiveTimestamp);
 
@@ -71,7 +71,7 @@ public final class TimeSinceLastSuccess implements Policy {
 
     StringBuilder messageBuilder = new StringBuilder(getName()).append("->");
 
-    if (scheduledTask.getTotalSuccessCount() == 0 && failed) {
+    if (cronJob.getTotalSuccessCount() == 0 && failed) {
       messageBuilder = messageBuilder.append(" never successfully run. First attempted execution at ");
     } else {
       messageBuilder = messageBuilder.append(" last success was at ");
@@ -91,10 +91,10 @@ public final class TimeSinceLastSuccess implements Policy {
 
   }
 
-  private long getLastActiveTimestamp(final ScheduledTask scheduledTask) {
-    return scheduledTask.getTotalSuccessCount() > 0 // if there is a last success at all
-      ? scheduledTask.getLastSuccessTimestamp() // use the timestamp
-      : scheduledTask.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp for a baseline
+  private long getLastActiveTimestamp(final CronJob cronJob) {
+    return cronJob.getTotalSuccessCount() > 0 // if there is a last success at all
+      ? cronJob.getLastSuccessTimestamp() // use the timestamp
+      : cronJob.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp for a baseline
   }
 
   @Override
@@ -103,8 +103,8 @@ public final class TimeSinceLastSuccess implements Policy {
   }
 
   @Override
-  public boolean isDisabled(final ScheduledTask scheduledTask) {
+  public boolean isDisabled(final CronJob cronJob) {
     // Per config comment, -1 indicates disabled alert for this policy
-    return scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess) == -1;
+    return cronJob.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess) == -1;
   }
 }

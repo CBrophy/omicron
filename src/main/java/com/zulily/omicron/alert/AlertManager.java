@@ -23,7 +23,7 @@ import com.google.common.collect.TreeMultimap;
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
-import com.zulily.omicron.scheduling.ScheduledTask;
+import com.zulily.omicron.scheduling.CronJob;
 import com.zulily.omicron.sla.CommentedExpression;
 import com.zulily.omicron.sla.MalformedExpression;
 import com.zulily.omicron.sla.Policy;
@@ -89,24 +89,24 @@ public final class AlertManager {
     }
   }
 
-  private void evaluateSLAs(final ScheduledTask scheduledTask) {
+  private void evaluateSLAs(final CronJob cronJob) {
 
     // Ignore alerts on inactive tasks
-    if (!scheduledTask.isActive()) {
+    if (!cronJob.isActive()) {
       return;
     }
 
     for (Policy slaPolicy : slaPolicies) {
 
-      if(slaPolicy.isDisabled(scheduledTask)){
+      if(slaPolicy.isDisabled(cronJob)){
         continue;
       }
 
-      final Alert newAlert = slaPolicy.evaluate(scheduledTask);
+      final Alert newAlert = slaPolicy.evaluate(cronJob);
 
       if (newAlert != null) {
 
-        final Alert existingAlert = scheduledTask.getPolicyAlerts().get(slaPolicy.getName());
+        final Alert existingAlert = cronJob.getPolicyAlerts().get(slaPolicy.getName());
 
         if (isSilentSuccess(existingAlert, newAlert)) {
           // We don't care about success alerts unless there is an existing
@@ -133,7 +133,7 @@ public final class AlertManager {
         // in either case, there is no longer a need to test the existing alert
         // and it doesn't matter what the failure state of the new alert might be
 
-        scheduledTask.getPolicyAlerts().put(slaPolicy.getName(), newAlert);
+        cronJob.getPolicyAlerts().put(slaPolicy.getName(), newAlert);
 
       }
 
@@ -151,46 +151,46 @@ public final class AlertManager {
   }
 
   /**
-   * Evaluates the passed in collection of {@link com.zulily.omicron.scheduling.ScheduledTask} instances
+   * Evaluates the passed in collection of {@link CronJob} instances
    * against the list of known {@link com.zulily.omicron.sla.Policy} implementations
    *
    * @param scheduledTasks The scheduled tasks to evaluate
    */
-  public void sendAlerts(final Iterable<ScheduledTask> scheduledTasks) {
+  public void sendAlerts(final Iterable<CronJob> scheduledTasks) {
 
     // Group all alerts into a single email try to mitigate getting mobbed by many single alert messages
 
     final TreeMultimap<String, Alert> alertsToSend = TreeMultimap.create();
 
-    for (final ScheduledTask scheduledTask : scheduledTasks) {
+    for (final CronJob cronJob : scheduledTasks) {
 
-      if(!scheduledTask.isActive()){
+      if(!cronJob.isActive()){
         // Do not send alerts on inactive tasks
         continue;
       }
 
-      evaluateSLAs(scheduledTask);
+      evaluateSLAs(cronJob);
 
-      if (scheduledTask.getPolicyAlerts().isEmpty()) {
+      if (cronJob.getPolicyAlerts().isEmpty()) {
         continue;
       }
 
-      if (!scheduledTask.getConfiguration().getBoolean(ConfigKey.AlertEmailEnabled)) {
+      if (!cronJob.getConfiguration().getBoolean(ConfigKey.AlertEmailEnabled)) {
 
-        warn("{0} Unsent policy alerts cleared due to disabled email alerting in config for: {1}", String.valueOf(scheduledTask.getPolicyAlerts().size()), scheduledTask.toString());
+        warn("{0} Unsent policy alerts cleared due to disabled email alerting in config for: {1}", String.valueOf(cronJob.getPolicyAlerts().size()), cronJob.toString());
 
-        scheduledTask.getPolicyAlerts().clear();
+        cronJob.getPolicyAlerts().clear();
 
         continue;
 
       }
 
-      final int alertMinutesDelayRepeat = scheduledTask.getConfiguration().getInt(ConfigKey.AlertMinutesDelayRepeat);
+      final int alertMinutesDelayRepeat = cronJob.getConfiguration().getInt(ConfigKey.AlertMinutesDelayRepeat);
 
       // Some alerts aren't meant to be repeated (recovery) so remove them afterwards
       final HashSet<String> policyAlertsToRemove = Sets.newHashSet();
 
-      for (final Alert alert : scheduledTask.getPolicyAlerts().values()) {
+      for (final Alert alert : cronJob.getPolicyAlerts().values()) {
 
         if (skipAlert(alert, alertMinutesDelayRepeat)) {
           continue;
@@ -206,12 +206,12 @@ public final class AlertManager {
 
         alert.setLastAlertTimestamp(DateTime.now().getMillis());
 
-        alertsToSend.put(scheduledTask.toString(), alert);
+        alertsToSend.put(cronJob.toString(), alert);
 
       }
 
       for (final String policyName : policyAlertsToRemove) {
-        scheduledTask.getPolicyAlerts().remove(policyName);
+        cronJob.getPolicyAlerts().remove(policyName);
       }
 
     }

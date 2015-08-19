@@ -30,7 +30,7 @@ import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
 /**
- * A running task is a single running instance of a {@link com.zulily.omicron.scheduling.ScheduledTask}
+ * A running task is a single running instance of a {@link CronJob}
  * which is launched as the specified user using 'su'.
  * <p/>
  * TODO: platform specific

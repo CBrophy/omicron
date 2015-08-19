@@ -19,7 +19,7 @@ import com.google.common.base.Throwables;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.Crontab;
-import com.zulily.omicron.scheduling.TaskManager;
+import com.zulily.omicron.scheduling.JobManager;
 import org.joda.time.DateTime;
 
 import java.util.concurrent.TimeUnit;
@@ -52,7 +52,7 @@ public final class Main {
 
       Crontab crontab = new Crontab(configuration);
 
-      final TaskManager taskManager = new TaskManager(configuration, crontab);
+      final JobManager jobManager = new JobManager(configuration, crontab);
 
       // The minute logic is intended to stay calibrated
       // with the current calendar minute.
@@ -80,7 +80,7 @@ public final class Main {
             configuration = configuration.reload();
             crontab = new Crontab(configuration);
 
-            taskManager.updateConfiguration(configuration, crontab);
+            jobManager.updateConfiguration(configuration, crontab);
           }
 
           try {
@@ -110,7 +110,7 @@ public final class Main {
         // Set for re-evaluation in the next calendar minute
         targetExecuteMinute = getTargetMinuteMillisFromNow(1);
 
-        taskManager.run();
+        jobManager.run();
       }
 
 

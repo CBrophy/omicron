@@ -18,7 +18,7 @@ package com.zulily.omicron.sla;
 import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.crontab.CrontabExpression;
-import com.zulily.omicron.scheduling.ScheduledTask;
+import com.zulily.omicron.scheduling.CronJob;
 import org.joda.time.DateTime;
 
 import java.util.concurrent.TimeUnit;
@@ -26,11 +26,11 @@ import java.util.concurrent.TimeUnit;
 public class CommentedExpression implements Policy {
 
   @Override
-  public Alert evaluate(final ScheduledTask scheduledTask) {
+  public Alert evaluate(final CronJob cronJob) {
 
-    final int commentedAlertIntervalMinutes = scheduledTask.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes);
+    final int commentedAlertIntervalMinutes = cronJob.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes);
 
-    final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
+    final CrontabExpression crontabExpression = cronJob.getCrontabExpression();
 
     final long crontabReadTimestamp = crontabExpression.getTimestamp();
 
@@ -75,8 +75,8 @@ public class CommentedExpression implements Policy {
   }
 
   @Override
-  public boolean isDisabled(final ScheduledTask scheduledTask) {
+  public boolean isDisabled(final CronJob cronJob) {
     // Per config comment, -1 indicates disabled alert for this policy
-    return scheduledTask.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes) == -1;
+    return cronJob.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes) == -1;
   }
 }

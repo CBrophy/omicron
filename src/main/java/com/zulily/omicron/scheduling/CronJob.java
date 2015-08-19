@@ -24,6 +24,7 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 
+import com.zulily.omicron.crontab.Schedule;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
@@ -38,9 +39,10 @@ import static com.zulily.omicron.Utils.warn;
  * ScheduledTasks encapsulates the logic of scheduling a {@link com.zulily.omicron.crontab.CrontabExpression}
  * as well as tracking the external processes as they are launched
  */
-public final class ScheduledTask implements Comparable<ScheduledTask> {
+public final class CronJob implements Comparable<CronJob> {
 
   private final CrontabExpression crontabExpression;
+  private final Schedule schedule;
   private final String commandLine;
   private final String executingUser;
   private Configuration configuration;
@@ -73,20 +75,20 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
    * @param commandLine       The commandLine to execute on the schedule, with variables substituted
    * @param configuration     The potentially overridden configuration to run against
    */
-  public ScheduledTask(final CrontabExpression crontabExpression,
-                       final String commandLine,
-                       final Configuration configuration) {
+  public CronJob(final CrontabExpression crontabExpression,
+                 final String commandLine,
+                 final Configuration configuration) {
 
     this.crontabExpression = checkNotNull(crontabExpression, "crontabExpression");
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.configuration = checkNotNull(configuration, "configuration");
     this.executingUser = crontabExpression.getExecutingUser();
-
+    this.schedule = crontabExpression.createSchedule();
   }
 
   private boolean shouldRunNow(final LocalDateTime localDateTime) {
 
-    if (isRunnable() && crontabExpression.timeInSchedule(localDateTime)) {
+    if (isRunnable() && schedule.timeInSchedule(localDateTime)) {
 
       if (!isActive()) {
         info("{0} skipped execution because it is inactive", commandLine);
@@ -326,7 +328,7 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
 
   @SuppressWarnings("NullableProblems")
   @Override
-  public int compareTo(ScheduledTask o) {
+  public int compareTo(CronJob o) {
     checkNotNull(o, "scheduledTask Compare against null");
 
     // These are logical 1:1 instances with distinct crontab expressions
@@ -345,9 +347,9 @@ public final class ScheduledTask implements Comparable<ScheduledTask> {
     // Involving the config match ensures that config updates
     // will differentiate scheduled tasks as new revisions when the crontab
     // is reloaded
-    return o instanceof ScheduledTask
-      && this.crontabExpression.equals(((ScheduledTask) o).crontabExpression)
-      && this.configuration.equals(((ScheduledTask) o).getConfiguration());
+    return o instanceof CronJob
+      && this.crontabExpression.equals(((CronJob) o).crontabExpression)
+      && this.configuration.equals(((CronJob) o).getConfiguration());
   }
 
   @Override

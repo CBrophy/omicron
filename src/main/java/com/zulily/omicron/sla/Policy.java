@@ -16,7 +16,7 @@
 package com.zulily.omicron.sla;
 
 import com.zulily.omicron.alert.Alert;
-import com.zulily.omicron.scheduling.ScheduledTask;
+import com.zulily.omicron.scheduling.CronJob;
 
 /**
  * A Policy represents a set of rules by which a decision is made to send an alert or not
@@ -29,12 +29,12 @@ public interface Policy {
    * Evaluate the statistics or properties of the provided ScheduledTask instance
    * and produce either a successful or failed alert instance.
    *
-   * @param scheduledTask The task to be evaluated
+   * @param cronJob The task to be evaluated
    * @return Either a success or failed alert. In the case where a binary Alert state cannot be determined, return null.
    */
-  Alert evaluate(final ScheduledTask scheduledTask);
+  Alert evaluate(final CronJob cronJob);
 
   String getName();
 
-  boolean isDisabled(final ScheduledTask scheduledTask);
+  boolean isDisabled(final CronJob cronJob);
 }

@@ -51,22 +51,12 @@ public final class CronJob implements Comparable<CronJob> {
 
   private boolean active = true;
 
-  private int totalCriticalFailureCount = 0;
-  private int totalExpectedFailureCount = 0;
   private int totalSuccessCount = 0;
   private int executionCount = 0;
-  private int skippedExecutionCount = 0;
 
   private long firstExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
   private long lastSuccessTimestamp = Utils.DEFAULT_TIMESTAMP;
   private long lastExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
-
-  private int criticalFailuresSinceLastSuccess = 0;
-  private int expectedFailuresSinceLastSuccess = 0;
-
-  private long averageSuccessDurationMilliseconds = 0L;
-  private long averageExpectedFailureDurationMilliseconds = 0L;
-  private long averageCriticalFailureDurationMilliseconds = 0L;
 
   /**
    * Constructor
@@ -145,10 +135,6 @@ public final class CronJob implements Comparable<CronJob> {
 
       return true;
 
-    } else {
-
-      this.skippedExecutionCount++;
-
     }
 
     return false;
@@ -177,76 +163,18 @@ public final class CronJob implements Comparable<CronJob> {
 
           this.lastSuccessTimestamp = runningTask.getEndTimeMilliseconds();
 
-          this.updateStatsForSuccess(duration);
-
-        } else if (runningTask.getReturnCode() < configuration.getInt(ConfigKey.TaskCriticalReturnCode)) {
-
-          // The task returned a code for "expected failure"
-          // aka. not notification worthy, but not counted against success rate
-
-          this.updateStatsForExpectedFailure(duration);
-
-        } else {
-
-          // Any other code is considered a critical failure
-          // and will result in notification
-
-          this.updateStatsForCriticalFailure(duration);
         }
 
       } else if (!runningTask.canStart()){
 
         runningTasks.remove(index);
 
-        this.updateStatsForCriticalFailure(0L);
       }
 
     }
 
   }
 
-  private void updateStatsForSuccess(final long duration){
-    this.criticalFailuresSinceLastSuccess = 0;
-    this.expectedFailuresSinceLastSuccess = 0;
-
-    this.averageSuccessDurationMilliseconds = rollAverage(
-      this.averageSuccessDurationMilliseconds,
-      duration,
-      ++this.totalSuccessCount
-    );
-  }
-
-  private void updateStatsForExpectedFailure(final long duration) {
-    this.expectedFailuresSinceLastSuccess++;
-
-    this.averageExpectedFailureDurationMilliseconds = rollAverage(
-      this.averageExpectedFailureDurationMilliseconds,
-      duration,
-      ++this.totalExpectedFailureCount
-    );
-  }
-
-  private void updateStatsForCriticalFailure(final long duration){
-
-    this.criticalFailuresSinceLastSuccess++;
-
-    this.averageCriticalFailureDurationMilliseconds = rollAverage(
-      this.averageCriticalFailureDurationMilliseconds,
-      duration,
-      ++this.totalCriticalFailureCount
-    );
-
-    info("Scheduled task critical failure detected: {0}", this.toString());
-
-  }
-
-  public int getTotalCriticalFailureCount() {
-    return totalCriticalFailureCount;
-  }
-
-  public int getTotalExpectedFailureCount() {
-    return totalExpectedFailureCount;
-  }
 
   public int getTotalSuccessCount() {
     return totalSuccessCount;
@@ -258,30 +186,6 @@ public final class CronJob implements Comparable<CronJob> {
 
   public long getLastExecutionTimestamp() {
     return lastExecutionTimestamp;
-  }
-
-  public int getCriticalFailuresSinceLastSuccess() {
-    return criticalFailuresSinceLastSuccess;
-  }
-
-  public int getExpectedFailuresSinceLastSuccess() {
-    return expectedFailuresSinceLastSuccess;
-  }
-
-  public long getAverageSuccessDurationMilliseconds() {
-    return averageSuccessDurationMilliseconds;
-  }
-
-  public long getAverageExpectedFailureDurationMilliseconds() {
-    return averageExpectedFailureDurationMilliseconds;
-  }
-
-  public long getAverageCriticalFailureDurationMilliseconds() {
-    return averageCriticalFailureDurationMilliseconds;
-  }
-
-  public int getSkippedExecutionCount() {
-    return skippedExecutionCount;
   }
 
   public int getExecutionCount() { return executionCount; }
@@ -320,10 +224,6 @@ public final class CronJob implements Comparable<CronJob> {
 
   public boolean isRunning() {
     return this.runningTasks.size() > 0;
-  }
-
-  private static long rollAverage(final long currentAverage, final long newValue, final int n) {
-    return (newValue + ((n - 1) * currentAverage)) / n;
   }
 
   @SuppressWarnings("NullableProblems")

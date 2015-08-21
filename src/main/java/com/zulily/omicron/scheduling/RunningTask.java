@@ -30,9 +30,9 @@ import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
 
 /**
- * A running task is a single running instance of a {@link CronJob}
+ * A running task is a single running instance of a {@link Job}
  * which is launched as the specified user using 'su'.
- * <p/>
+ * <p>
  * TODO: platform specific
  */
 public final class RunningTask implements Runnable, Comparable<RunningTask> {
@@ -42,6 +42,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private final String executingUser;
   private final Thread thread;
   private final long timeoutMinutes;
+  private final int taskId;
 
   // These values are read by the parent thread to track execution
   private AtomicLong startTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
@@ -49,9 +50,13 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private AtomicInteger returnCode = new AtomicInteger(255);
   private AtomicLong pid = new AtomicLong(-1L);
 
-  public RunningTask(final String commandLine,
-                     final String executingUser,
-                     final long timeoutMinutes) {
+  public RunningTask(
+    final int taskId,
+    final String commandLine,
+    final String executingUser,
+    final long timeoutMinutes) {
+
+    this.taskId = taskId;
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.executingUser = checkNotNull(executingUser, "executingUser");
     this.launchTimeMilliseconds = DateTime.now().getMillis();
@@ -82,13 +87,13 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
       // If a timeout is set, then we must enter an isAlive loop test
       // after the kill command is issued otherwise the unkillable
       // process may pile up on the host
-      if(timeoutMinutes > 0){
+      if (timeoutMinutes > 0) {
 
         int killCount = 0;
 
-        while(process.isAlive()) {
+        while (process.isAlive()) {
 
-          if(killCount > 1) {
+          if (killCount > 1) {
             error("{0} attempts to kill process after timeout have failed: {0}", String.valueOf(killCount), commandLine);
           }
 
@@ -231,4 +236,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     return launchTimeMilliseconds;
   }
 
+  public int getTaskId() {
+    return taskId;
+  }
 }

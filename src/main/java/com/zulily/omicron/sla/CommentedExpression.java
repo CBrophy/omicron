@@ -16,21 +16,29 @@
 package com.zulily.omicron.sla;
 
 import com.zulily.omicron.alert.Alert;
+import com.zulily.omicron.alert.AlertStatus;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.crontab.CrontabExpression;
-import com.zulily.omicron.scheduling.CronJob;
+import com.zulily.omicron.scheduling.Job;
 import org.joda.time.DateTime;
 
 import java.util.concurrent.TimeUnit;
 
-public class CommentedExpression implements Policy {
+public class CommentedExpression extends Policy {
+
+  private final static String NAME = "Commented_Expression";
 
   @Override
-  public Alert evaluate(final CronJob cronJob) {
+  public boolean isDisabled(final Job job) {
+    // Per config comment, -1 indicates disabled alert for this policy
+    return job.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes) == -1;
+  }
 
-    final int commentedAlertIntervalMinutes = cronJob.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes);
+  @Override
+  protected Alert generateAlert(final Job job) {
+    final int commentedAlertIntervalMinutes = job.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes);
 
-    final CrontabExpression crontabExpression = cronJob.getCrontabExpression();
+    final CrontabExpression crontabExpression = job.getCrontabExpression();
 
     final long crontabReadTimestamp = crontabExpression.getTimestamp();
 
@@ -38,17 +46,16 @@ public class CommentedExpression implements Policy {
 
     final int minutesCommented = (int) TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - crontabReadTimestamp);
 
-    final boolean failed = crontabExpression.isCommented() && minutesCommented > commentedAlertIntervalMinutes;
+    final AlertStatus alertStatus = crontabExpression.isCommented() && minutesCommented > commentedAlertIntervalMinutes ? AlertStatus.Failure : AlertStatus.Success;
 
     // Alert body looks like:
     //
     // SUCCESS: Commented_Expression-> expression uncommented and scheduled to run
     // FAILED: Commented_Expression-> row is commented and disabled (commented out for 40 minutes; threshold set to 20)
 
+    StringBuilder messageBuilder = new StringBuilder(alertStatus == AlertStatus.Failure ? "FAILED: " : "SUCCESS: ").append(NAME).append("->");
 
-    StringBuilder messageBuilder = new StringBuilder(getName()).append("->");
-
-    if (failed) {
+    if (alertStatus == AlertStatus.Failure) {
       messageBuilder = messageBuilder
         .append(" row is commented and disabled (commented out for ")
         .append(minutesCommented)
@@ -61,22 +68,9 @@ public class CommentedExpression implements Policy {
     }
 
     return new Alert(
-      getName(),
       messageBuilder.toString(),
-      crontabExpression.getLineNumber(),
-      crontabExpression.getRawExpression(),
-      failed
+      job,
+      alertStatus
     );
-  }
-
-  @Override
-  public String getName() {
-    return "Commented_Expression";
-  }
-
-  @Override
-  public boolean isDisabled(final CronJob cronJob) {
-    // Per config comment, -1 indicates disabled alert for this policy
-    return cronJob.getConfiguration().getInt(ConfigKey.SLACommentedExpressionAlertDelayMinutes) == -1;
   }
 }

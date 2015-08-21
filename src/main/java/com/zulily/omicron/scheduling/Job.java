@@ -15,22 +15,24 @@
  */
 package com.zulily.omicron.scheduling;
 
+import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
 
-import com.google.common.collect.Maps;
+import com.zulily.omicron.EvictingTreeSet;
 import com.zulily.omicron.Utils;
-import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 
 import com.zulily.omicron.crontab.Schedule;
-import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import java.util.LinkedList;
-import java.util.TreeMap;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
@@ -39,24 +41,25 @@ import static com.zulily.omicron.Utils.warn;
  * ScheduledTasks encapsulates the logic of scheduling a {@link com.zulily.omicron.crontab.CrontabExpression}
  * as well as tracking the external processes as they are launched
  */
-public final class CronJob implements Comparable<CronJob> {
+public final class Job implements Comparable<Job> {
 
+  private final static AtomicLong JOB_IDS = new AtomicLong();
+
+  private final long jobId = JOB_IDS.incrementAndGet();
   private final CrontabExpression crontabExpression;
   private final Schedule schedule;
   private final String commandLine;
   private final String executingUser;
   private Configuration configuration;
   private final LinkedList<RunningTask> runningTasks = Lists.newLinkedList();
-  private final TreeMap<String, Alert> policyAlerts = Maps.newTreeMap();
+  private final EvictingTreeSet<TaskLogEntry> taskLog = new EvictingTreeSet<>(500, true);
+  private final ReentrantLock reentrantLock = new ReentrantLock(true);
 
   private boolean active = true;
 
-  private int totalSuccessCount = 0;
-  private int executionCount = 0;
+  private int scheduledRunCount = 0;
 
-  private long firstExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
-  private long lastSuccessTimestamp = Utils.DEFAULT_TIMESTAMP;
-  private long lastExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
+  private long nextExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
 
   /**
    * Constructor
@@ -65,9 +68,9 @@ public final class CronJob implements Comparable<CronJob> {
    * @param commandLine       The commandLine to execute on the schedule, with variables substituted
    * @param configuration     The potentially overridden configuration to run against
    */
-  public CronJob(final CrontabExpression crontabExpression,
-                 final String commandLine,
-                 final Configuration configuration) {
+  public Job(final CrontabExpression crontabExpression,
+             final String commandLine,
+             final Configuration configuration) {
 
     this.crontabExpression = checkNotNull(crontabExpression, "crontabExpression");
     this.commandLine = checkNotNull(commandLine, "commandLine");
@@ -76,9 +79,9 @@ public final class CronJob implements Comparable<CronJob> {
     this.schedule = crontabExpression.createSchedule();
   }
 
-  private boolean shouldRunNow(final LocalDateTime localDateTime) {
+  private boolean shouldRunNow() {
 
-    if (isRunnable() && schedule.timeInSchedule(localDateTime)) {
+    if (isRunnable()) {
 
       if (!isActive()) {
         info("{0} skipped execution because it is inactive", commandLine);
@@ -99,7 +102,7 @@ public final class CronJob implements Comparable<CronJob> {
 
   /**
    * The primary work routine for scheduled tasks.
-   * <p/>
+   * <p>
    * Evaluates the schedule against the current calendar minute
    * Removes old references to running tasks
    * Calculates the operating statistics of the jobs being launched
@@ -110,20 +113,20 @@ public final class CronJob implements Comparable<CronJob> {
 
     final LocalDateTime localDateTime = LocalDateTime.now(configuration.getChronology());
 
-    // Cleans out old process pointers and records stats
+    // Cleans out old process pointers and log entries
     sweepRunningTasks();
 
-    if (shouldRunNow(localDateTime)) {
+    if (!schedule.timeInSchedule(localDateTime)) {
+      return false;
+    }
 
-      this.executionCount++;
+    this.scheduledRunCount++;
 
-      if (this.firstExecutionTimestamp == Utils.DEFAULT_TIMESTAMP) {
-        this.firstExecutionTimestamp = DateTime.now().getMillis();
-      }
+    if (shouldRunNow()) {
 
       info("[scheduled@{0} {1}] Executing: {2}", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), commandLine);
 
-      final RunningTask runningTask = new RunningTask(commandLine, executingUser, configuration.getInt(ConfigKey.TaskTimeoutMinutes));
+      final RunningTask runningTask = new RunningTask(scheduledRunCount, commandLine, executingUser, configuration.getInt(ConfigKey.TaskTimeoutMinutes));
 
       // Most recent run to the start of the list to
       // allow ordered deque from the end of the list
@@ -131,9 +134,15 @@ public final class CronJob implements Comparable<CronJob> {
 
       runningTask.start();
 
-      this.lastExecutionTimestamp = runningTask.getLaunchTimeMilliseconds();
+      writeLogEntry(new TaskLogEntry(runningTask.getTaskId(), TaskStatus.Started, runningTask.getStartTimeMilliseconds()));
+
+      this.nextExecutionTimestamp = this.schedule.getNextRunAfter(localDateTime).toDateTime().getMillis();
 
       return true;
+
+    } else {
+
+      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, localDateTime.toDateTime().getMillis()));
 
     }
 
@@ -157,41 +166,21 @@ public final class CronJob implements Comparable<CronJob> {
 
         runningTasks.remove(index);
 
-        final long duration = runningTask.getStartTimeMilliseconds() - runningTask.getEndTimeMilliseconds();
+        writeLogEntry(new TaskLogEntry(
+          runningTask.getTaskId(),
+          runningTask.getReturnCode() == 0 ? TaskStatus.Complete : TaskStatus.Error,
+          runningTask.getEndTimeMilliseconds()));
 
-        if (runningTask.getReturnCode() == 0) {
-
-          this.lastSuccessTimestamp = runningTask.getEndTimeMilliseconds();
-
-        }
-
-      } else if (!runningTask.canStart()){
+      } else if (!runningTask.canStart()) {
 
         runningTasks.remove(index);
+
+        writeLogEntry(new TaskLogEntry(runningTask.getTaskId(), TaskStatus.FailedStart, runningTask.getLaunchTimeMilliseconds()));
 
       }
 
     }
 
-  }
-
-
-  public int getTotalSuccessCount() {
-    return totalSuccessCount;
-  }
-
-  public long getLastSuccessTimestamp() {
-    return lastSuccessTimestamp;
-  }
-
-  public long getLastExecutionTimestamp() {
-    return lastExecutionTimestamp;
-  }
-
-  public int getExecutionCount() { return executionCount; }
-
-  public long getFirstExecutionTimestamp() {
-    return firstExecutionTimestamp;
   }
 
   public CrontabExpression getCrontabExpression() {
@@ -206,11 +195,7 @@ public final class CronJob implements Comparable<CronJob> {
     this.configuration = checkNotNull(configuration, "configuration");
   }
 
-  public TreeMap<String, Alert> getPolicyAlerts() {
-    return policyAlerts;
-  }
-
-  public boolean isRunnable(){
+  public boolean isRunnable() {
     return !(crontabExpression.isMalformed() || crontabExpression.isCommented());
   }
 
@@ -228,7 +213,7 @@ public final class CronJob implements Comparable<CronJob> {
 
   @SuppressWarnings("NullableProblems")
   @Override
-  public int compareTo(CronJob o) {
+  public int compareTo(Job o) {
     checkNotNull(o, "scheduledTask Compare against null");
 
     // These are logical 1:1 instances with distinct crontab expressions
@@ -247,9 +232,9 @@ public final class CronJob implements Comparable<CronJob> {
     // Involving the config match ensures that config updates
     // will differentiate scheduled tasks as new revisions when the crontab
     // is reloaded
-    return o instanceof CronJob
-      && this.crontabExpression.equals(((CronJob) o).crontabExpression)
-      && this.configuration.equals(((CronJob) o).getConfiguration());
+    return o instanceof Job
+      && this.crontabExpression.equals(((Job) o).crontabExpression)
+      && this.configuration.equals(((Job) o).getConfiguration());
   }
 
   @Override
@@ -257,4 +242,54 @@ public final class CronJob implements Comparable<CronJob> {
     return this.crontabExpression.toString();
   }
 
+  public long getNextExecutionTimestamp() {
+    return nextExecutionTimestamp;
+  }
+
+  public long getJobId() {
+    return jobId;
+  }
+
+  private void writeLogEntry(final TaskLogEntry taskLogEntry) {
+    checkNotNull(taskLogEntry, "taskLogEntry");
+
+    reentrantLock.lock();
+    try {
+      taskLog.add(taskLogEntry);
+    } finally {
+      reentrantLock.unlock();
+    }
+  }
+
+  public ImmutableSortedSet<TaskLogEntry> filterLog(final Set<TaskStatus> statusFilter) {
+    checkNotNull(statusFilter, "statusFilter");
+    checkArgument(!statusFilter.isEmpty(), "empty filter");
+
+    ImmutableSortedSet.Builder<TaskLogEntry> result = ImmutableSortedSet.naturalOrder();
+
+    reentrantLock.lock();
+
+    try {
+
+      taskLog
+        .stream()
+        .filter(entry -> statusFilter.contains(entry.getTaskStatus()))
+        .map(result::add);
+
+    } finally {
+      reentrantLock.unlock();
+    }
+
+    return result.build();
+  }
+
+  public boolean hasLogEntries() {
+    reentrantLock.lock();
+
+    try {
+      return !taskLog.isEmpty();
+    } finally {
+      reentrantLock.unlock();
+    }
+  }
 }

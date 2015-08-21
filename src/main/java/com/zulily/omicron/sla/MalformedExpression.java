@@ -16,20 +16,34 @@
 package com.zulily.omicron.sla;
 
 import com.zulily.omicron.alert.Alert;
+import com.zulily.omicron.alert.AlertStatus;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.crontab.CrontabExpression;
-import com.zulily.omicron.scheduling.CronJob;
+import com.zulily.omicron.scheduling.Job;
 import org.joda.time.DateTime;
 
 import java.util.concurrent.TimeUnit;
 
-public class MalformedExpression implements Policy {
+public class MalformedExpression extends Policy {
+
+  private final static String NAME = "Malformed_Expression";
+
   @Override
-  public Alert evaluate(final CronJob cronJob) {
+  public boolean isDisabled(final Job job) {
+    // Per config comment, -1 indicates disabled alert for this policy
+    return job.getConfiguration().getInt(ConfigKey.SLAMalformedExpressionAlertDelayMinutes) == -1;
+  }
 
-    final int malformedAlertDelaylMinutes = cronJob.getConfiguration().getInt(ConfigKey.SLAMalformedExpressionAlertDelayMinutes);
+  @Override
+  protected Alert generateAlert(final Job job) {
+    // Alert body looks like:
+    //
+    // SUCCESS: Malformed_Expression-> expression is valid and scheduled to run
+    // FAILED: Malformed_Expression-> row is uncommented but cannot be run due to syntax error (malformed for 40 minutes; threshold set to 20)
 
-    final CrontabExpression crontabExpression = cronJob.getCrontabExpression();
+    final int malformedAlertDelaylMinutes = job.getConfiguration().getInt(ConfigKey.SLAMalformedExpressionAlertDelayMinutes);
+
+    final CrontabExpression crontabExpression = job.getCrontabExpression();
 
     final long crontabReadTimestamp = crontabExpression.getTimestamp();
 
@@ -37,17 +51,11 @@ public class MalformedExpression implements Policy {
 
     final int minutesMalformed = (int) TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - crontabReadTimestamp);
 
-    final boolean failed = crontabExpression.isMalformed() && minutesMalformed > malformedAlertDelaylMinutes;
+    final AlertStatus alertStatus = crontabExpression.isMalformed() && minutesMalformed > malformedAlertDelaylMinutes ? AlertStatus.Failure : AlertStatus.Success;
 
-    // Alert body looks like:
-    //
-    // SUCCESS: Malformed_Expression-> expression is valid and scheduled to run
-    // FAILED: Malformed_Expression-> row is uncommented but cannot be run due to syntax error (malformed for 40 minutes; threshold set to 20)
+    StringBuilder messageBuilder = new StringBuilder(alertStatus == AlertStatus.Failure ? "FAILED: " : "SUCCESS: ").append(NAME).append(" -> ");
 
-
-    StringBuilder messageBuilder = new StringBuilder(getName()).append("->");
-
-    if (failed) {
+    if (alertStatus == AlertStatus.Failure) {
       messageBuilder = messageBuilder
         .append(" row is uncommented but cannot be run due to syntax error (malformed for ")
         .append(minutesMalformed)
@@ -60,22 +68,9 @@ public class MalformedExpression implements Policy {
     }
 
     return new Alert(
-      getName(),
       messageBuilder.toString(),
-      crontabExpression.getLineNumber(),
-      crontabExpression.getRawExpression(),
-      failed
+      job,
+      alertStatus
     );
-  }
-
-  @Override
-  public String getName() {
-    return "Malformed_Expression";
-  }
-
-  @Override
-  public boolean isDisabled(final CronJob cronJob) {
-    // Per config comment, -1 indicates disabled alert for this policy
-    return cronJob.getConfiguration().getInt(ConfigKey.SLAMalformedExpressionAlertDelayMinutes) == -1;
   }
 }

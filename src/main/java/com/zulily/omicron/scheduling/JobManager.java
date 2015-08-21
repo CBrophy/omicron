@@ -38,8 +38,8 @@ import static com.zulily.omicron.Utils.info;
  * and triggering alert SLA evaluation.
  */
 public final class JobManager {
-  private final ArrayList<CronJob> retiredCronJobs = Lists.newArrayList();
-  private HashSet<CronJob> cronJobSet = Sets.newHashSet();
+  private final ArrayList<Job> retiredJobs = Lists.newArrayList();
+  private HashSet<Job> jobSet = Sets.newHashSet();
   private AlertManager alertManager;
 
   public JobManager(final Configuration configuration, final Crontab crontab) {
@@ -68,17 +68,17 @@ public final class JobManager {
 
     int executeCount = 0;
 
-    for (final CronJob cronJob : cronJobSet) {
+    for (final Job job : jobSet) {
 
       try {
 
-        if (cronJob.run()) {
+        if (job.run()) {
           executeCount++;
         }
 
       } catch (Exception e) {
         // An individual task failure should never block all other tasks from executing, so output any exceptions and continue
-        error("Task evaluation exception on task: {0}\n{1}", cronJob.toString(), Throwables.getStackTraceAsString(e));
+        error("Task evaluation exception on task: {0}\n{1}", job.toString(), Throwables.getStackTraceAsString(e));
       }
 
     }
@@ -96,7 +96,7 @@ public final class JobManager {
       // Perform the alert evaluation outside of the task launching loop
       // to avoid delaying task launch and to skip evaluation
       // against retired tasks
-      alertManager.sendAlerts(cronJobSet);
+      alertManager.sendAlerts(jobSet);
 
     } catch (Exception e) {
       // This function should not throw exceptions that cause the outer timed loop to break
@@ -118,80 +118,80 @@ public final class JobManager {
 
     this.alertManager.updateConfiguration(configuration);
 
-    final HashSet<CronJob> result = Sets.newHashSet();
+    final HashSet<Job> result = Sets.newHashSet();
 
-    final HashSet<CronJob> cronJobUpdates = Sets.newHashSet();
+    final HashSet<Job> jobUpdates = Sets.newHashSet();
 
     for (final CrontabExpression crontabExpression : crontab.getCrontabExpressions()) {
 
       // If there are overrides in the crontab for this expression, get them and apply them
       final Configuration configurationOverride = crontab.getConfigurationOverrides().get(crontabExpression.getLineNumber());
 
-      final CronJob cronJob = new CronJob(
+      final Job job = new Job(
         crontabExpression,
         substituteVariables(crontabExpression.getCommand(), crontab.getVariables()),
         configurationOverride == null ? configuration : configurationOverride);
 
-      cronJobUpdates.add(cronJob);
+      jobUpdates.add(job);
     }
 
     // This is a view containing old scheduled tasks that have been removed or
     // reconfigured
-    final Sets.SetView<CronJob> oldCronJobs = Sets.difference(cronJobSet, cronJobUpdates);
+    final Sets.SetView<Job> oldJobs = Sets.difference(jobSet, jobUpdates);
 
-    info("CRON UPDATE: {0} tasks no longer scheduled or out of date", String.valueOf(oldCronJobs.size()));
+    info("CRON UPDATE: {0} tasks no longer scheduled or out of date", String.valueOf(oldJobs.size()));
 
     // This is a view of scheduled tasks that will not be updated by the cron reload
-    final Sets.SetView<CronJob> existingCronJobs = Sets.intersection(cronJobSet, cronJobUpdates);
+    final Sets.SetView<Job> existingJobs = Sets.intersection(jobSet, jobUpdates);
 
-    info("CRON UPDATE: {0} tasks unchanged", String.valueOf(existingCronJobs.size()));
+    info("CRON UPDATE: {0} tasks unchanged", String.valueOf(existingJobs.size()));
 
     // This is a view of scheduled tasks that are new or have been changed
-    final Sets.SetView<CronJob> newCronJobs = Sets.difference(cronJobUpdates, cronJobSet);
+    final Sets.SetView<Job> newJobs = Sets.difference(jobUpdates, jobSet);
 
-    info("CRON UPDATE: {0} tasks are new or updated", String.valueOf(newCronJobs.size()));
+    info("CRON UPDATE: {0} tasks are new or updated", String.valueOf(newJobs.size()));
 
     // Add all new tasks
     // keep references to old tasks that are still running
     // and transfer instances that haven't changed
-    result.addAll(newCronJobs);
+    result.addAll(newJobs);
 
-    for (final CronJob cronJob : cronJobSet) {
+    for (final Job job : jobSet) {
 
-      if (oldCronJobs.contains(cronJob) && cronJob.isRunning()) {
+      if (oldJobs.contains(job) && job.isRunning()) {
 
-        cronJob.setActive(false);
-        result.add(cronJob);
+        job.setActive(false);
+        result.add(job);
 
-        retiredCronJobs.add(cronJob);
+        retiredJobs.add(job);
       }
 
-      if (existingCronJobs.contains(cronJob)) {
+      if (existingJobs.contains(job)) {
 
-        if (!cronJob.isActive()) {
+        if (!job.isActive()) {
           // Did someone re-add a task that was running and then removed?
           // For whatever reason, it's now set to run again so just re-activate the instance
-          info("CRON UPDATE: Reactivating {0}", cronJob.toString());
-          cronJob.setActive(true);
+          info("CRON UPDATE: Reactivating {0}", job.toString());
+          job.setActive(true);
         }
 
-        result.add(cronJob);
+        result.add(job);
       }
     }
 
-    this.cronJobSet = result;
+    this.jobSet = result;
   }
 
   private void retireOldTasks() {
-    final int retiredTaskCount = retiredCronJobs.size() - 1;
+    final int retiredTaskCount = retiredJobs.size() - 1;
 
     for (int index = retiredTaskCount; index >= 0; index--) {
-      final CronJob retiredTask = retiredCronJobs.get(index);
+      final Job retiredTask = retiredJobs.get(index);
 
       if (!retiredTask.isRunning()) {
         info("Retiring inactive task: {0}", retiredTask.toString());
-        retiredCronJobs.remove(index);
-        cronJobSet.remove(retiredTask);
+        retiredJobs.remove(index);
+        jobSet.remove(retiredTask);
       }
     }
   }

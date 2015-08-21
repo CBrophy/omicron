@@ -168,14 +168,8 @@ public final class Job implements Comparable<Job> {
 
         writeLogEntry(new TaskLogEntry(
           runningTask.getTaskId(),
-          runningTask.getReturnCode() == 0 ? TaskStatus.Complete : TaskStatus.Error,
+          runningTask.getTaskStatus(),
           runningTask.getEndTimeMilliseconds()));
-
-      } else if (!runningTask.canStart()) {
-
-        runningTasks.remove(index);
-
-        writeLogEntry(new TaskLogEntry(runningTask.getTaskId(), TaskStatus.FailedStart, runningTask.getLaunchTimeMilliseconds()));
 
       }
 

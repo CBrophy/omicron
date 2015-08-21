@@ -24,6 +24,7 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.zulily.omicron.Utils;
 import org.joda.time.Chronology;
+import org.joda.time.LocalTime;
 
 import java.io.File;
 import java.io.IOException;
@@ -271,5 +272,21 @@ public class Configuration {
     }
 
     return true;
+  }
+
+  public TimeInterval getTimeInterval(final ConfigKey configKey){
+
+    final String configValue = getString(configKey);
+
+    final int plusIndex = configValue.indexOf('+');
+
+    if(configValue.isEmpty()) return null;
+
+    final LocalTime startTime = LocalTime.parse(configValue.substring(0, plusIndex));
+
+    final int hours = Integer.parseInt(configValue.substring(plusIndex + 1));
+
+    return new TimeInterval(startTime, hours);
+
   }
 }

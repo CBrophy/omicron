@@ -20,8 +20,10 @@ import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.alert.AlertLogEntry;
 import com.zulily.omicron.alert.AlertStatus;
 import com.zulily.omicron.conf.ConfigKey;
+import com.zulily.omicron.conf.TimeInterval;
 import com.zulily.omicron.scheduling.Job;
 import org.joda.time.DateTime;
+import org.joda.time.Interval;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -39,19 +41,20 @@ import java.util.concurrent.TimeUnit;
 public abstract class Policy {
 
   private final TreeMap<Long, AlertLogEntry> lastAlertLog = new TreeMap<>();
-  private final List<Alert> outbox = new ArrayList<>();
 
   public abstract boolean isDisabled(final Job job);
 
   protected abstract Alert generateAlert(final Job job);
 
-  public void evaluate(final Iterable<Job> jobs) {
+  public List<Alert> evaluate(final Iterable<Job> jobs) {
+
+    final List<Alert> result = new ArrayList<>();
 
     final Set<Long> activeJobIds = new HashSet<>();
 
     for (Job job : jobs) {
 
-      if (job.isActive() && !isDisabled(job)) {
+      if (job.isActive() && !isDisabled(job) && !isDowntime(job)) {
 
         activeJobIds.add(job.getJobId());
 
@@ -79,7 +82,7 @@ public abstract class Policy {
 
         lastAlertLog.put(job.getJobId(), new AlertLogEntry(job.getJobId(), alert.getAlertStatus()));
 
-        outbox.add(alert);
+        result.add(alert);
 
       }
 
@@ -94,6 +97,7 @@ public abstract class Policy {
 
     }
 
+    return result;
   }
 
   private boolean delayRepeat(final AlertLogEntry alertLogEntry, final Job job) {
@@ -103,10 +107,6 @@ public abstract class Policy {
         .getConfiguration()
         .getInt(ConfigKey.AlertMinutesDelayRepeat));
 
-  }
-
-  public List<Alert> getOutbox() {
-    return outbox;
   }
 
   protected TreeMap<Long, AlertLogEntry> getLastAlertLog() {
@@ -119,6 +119,18 @@ public abstract class Policy {
       job,
       AlertStatus.NotApplicable
     );
+  }
+
+  private boolean isDowntime(final Job job){
+    TimeInterval timeInterval = job.getConfiguration().getTimeInterval(ConfigKey.AlertDowntime);
+
+    if(timeInterval == null){
+      return false;
+    }
+
+    Interval interval = timeInterval.asInterval(job.getConfiguration().getChronology());
+
+    return interval.contains(DateTime.now(job.getConfiguration().getChronology()));
   }
 
 }

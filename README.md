@@ -15,7 +15,7 @@ Third-party dependencies are: maven, guava, joda-time, junit, and javax mail.
 Current Functional Requirements
 ===============================
 
-* JRE 7 or above
+* JRE 8 or above
 
 * Linux platform tested
   - OSX untested, might work

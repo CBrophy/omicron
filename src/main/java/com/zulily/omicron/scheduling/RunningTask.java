@@ -49,6 +49,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private AtomicLong endTimeMilliseconds = new AtomicLong(-1L);
   private AtomicInteger returnCode = new AtomicInteger(255);
   private AtomicLong pid = new AtomicLong(-1L);
+  private TaskStatus taskStatus = TaskStatus.FailedStart;
 
   public RunningTask(
     final int taskId,
@@ -71,6 +72,9 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
       if (!canStart()) {
         // TODO: more nuance - there can be other reasons a task cannot start
         warn("Not running as root. Cannot execute: {0}", this.commandLine);
+
+        this.endTimeMilliseconds.set(DateTime.now().getMillis());
+
         return;
       }
 
@@ -109,6 +113,8 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
             process.destroyForcibly();
 
+            this.taskStatus = TaskStatus.Killed;
+
             killCount++;
           }
 
@@ -116,6 +122,11 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
       } else {
         this.returnCode.set(Math.abs(process.waitFor()));
+      }
+
+      // Don't overwrite killed state
+      if(taskStatus == TaskStatus.FailedStart){
+        this.taskStatus = this.getReturnCode() == 0 ? TaskStatus.Complete : TaskStatus.Error;
       }
 
       this.endTimeMilliseconds.set(DateTime.now().getMillis());
@@ -220,7 +231,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     return endTimeMilliseconds.get() > -1L;
   }
 
-  public boolean canStart() {
+  private boolean canStart() {
     return Utils.isRunningAsRoot();
   }
 
@@ -232,11 +243,11 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     return pid.get();
   }
 
-  public long getLaunchTimeMilliseconds() {
-    return launchTimeMilliseconds;
-  }
-
   public int getTaskId() {
     return taskId;
+  }
+
+  public TaskStatus getTaskStatus() {
+    return taskStatus;
   }
 }

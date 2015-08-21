@@ -98,17 +98,14 @@ public final class AlertManager {
     final List<Alert> alertsToSend = new ArrayList<>();
 
     for (Policy slaPolicy : slaPolicies) {
-      slaPolicy.evaluate(scheduledTasks);
 
-      alertsToSend.addAll(slaPolicy.getOutbox());
+      alertsToSend.addAll(slaPolicy.evaluate(scheduledTasks));
 
-      slaPolicy.getOutbox().clear();
     }
 
     if (!alertsToSend.isEmpty()) {
       this.threadPool.submit(new SendEmailRunnable(alertsToSend, this.email));
     }
-
 
   }
 

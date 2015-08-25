@@ -88,7 +88,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
         return;
       }
 
-      final ProcessBuilder processBuilder = new ProcessBuilder("su", "-", executingUser, "-c", commandLine);
+      final ProcessBuilder processBuilder = new ProcessBuilder(configuration.getString(ConfigKey.CommandSu), "-", executingUser, "-c", commandLine);
 
       processBuilder.inheritIO();
 
@@ -278,13 +278,13 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
       final List<String> pidList = getPidList();
 
       warn(
-        "Timeout after {0} minutes. Killing running process PID and any children: {1}",
+        "Timeout after {0} minutes. Killing running process along with any children: {1}",
         configuration.getString(ConfigKey.TaskTimeoutMinutes),
         COMMA_JOINER.join(pidList)
       );
 
       for (String pid : pidList) {
-        Runtime.getRuntime().exec("kill -9 " + pid);
+        new ProcessBuilder(configuration.getString(ConfigKey.CommandKill), "-9", pid).start();
       }
 
     } else {
@@ -293,12 +293,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   }
 
   private List<String> getPidList() throws IOException, InterruptedException {
-    final String pidListCommand = configuration.getString(ConfigKey.PidListCommand).replace(
-      "$PID",
-      String.valueOf(getPid())
-    );
-
-    Process pidList = new ProcessBuilder(pidListCommand)
+    Process pidList = new ProcessBuilder(configuration.getString(ConfigKey.CommandPstree), String.valueOf(getPid()), "-p", "-a", "-l")
       .start();
 
     BufferedReader input = new BufferedReader(

@@ -88,7 +88,7 @@ public final class Job implements Comparable<Job> {
         return false;
       }
 
-      if (runningTasks.size() >= configuration.getInt(ConfigKey.TaskDuplicateAllowedCount)) {
+      if (runningTasks.size() >= configuration.getInt(ConfigKey.TaskMaxInstanceCount)) {
         warn("{0} skipped execution because there are already {1} running", commandLine, String.valueOf(runningTasks.size()));
         return false;
       }

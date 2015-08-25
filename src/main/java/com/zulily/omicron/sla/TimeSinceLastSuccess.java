@@ -154,13 +154,13 @@ public final class TimeSinceLastSuccess extends Policy {
     messageBuilder = messageBuilder.append(" (").append(
       TimeUnit.MILLISECONDS.toMinutes(
         DateTime.now()
-                .getMillis() - baselineTaskLogEntry.getTimestamp()
+          .getMillis() - baselineTaskLogEntry.getTimestamp()
       )
     ).append(" minutes ago)");
 
     messageBuilder = messageBuilder.append("\nThreshold set to ").append(
       job.getConfiguration()
-         .getInt(ConfigKey.SLAMinutesSinceSuccess)
+        .getInt(ConfigKey.SLAMinutesSinceSuccess)
     );
 
     return new Alert(messageBuilder.toString(), job, alertStatus);

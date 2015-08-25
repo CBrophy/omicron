@@ -41,9 +41,9 @@ import static com.zulily.omicron.Utils.warn;
 /**
  * Configuration reads and stores values from the global config file
  * which can be specified on the command line when omicron is launched.
- * <p/>
+ * <p>
  * Individual rows in the crontab can override certain values in the global config
- * <p/>
+ * <p>
  * See: {@link com.zulily.omicron.conf.ConfigKey} for more details
  */
 public class Configuration {
@@ -253,20 +253,20 @@ public class Configuration {
   }
 
   @Override
-  public boolean equals(Object o){
+  public boolean equals(Object o) {
     return o instanceof Configuration
       && this.configurationTimestamp == ((Configuration) o).getConfigurationTimestamp()
       && configValuesMatch((Configuration) o);
   }
 
-  private boolean configValuesMatch(final Configuration configuration){
+  private boolean configValuesMatch(final Configuration configuration) {
 
     for (ConfigKey configKey : ConfigKey.values()) {
-      if(configKey == ConfigKey.Unknown){
+      if (configKey == ConfigKey.Unknown) {
         continue;
       }
 
-      if(!getString(configKey).equals(configuration.getString(configKey))){
+      if (!getString(configKey).equals(configuration.getString(configKey))) {
         return false;
       }
     }
@@ -274,13 +274,13 @@ public class Configuration {
     return true;
   }
 
-  public TimeInterval getTimeInterval(final ConfigKey configKey){
+  public TimeInterval getTimeInterval(final ConfigKey configKey) {
 
     final String configValue = getString(configKey);
 
     final int plusIndex = configValue.indexOf('+');
 
-    if(configValue.isEmpty()) return null;
+    if (configValue.isEmpty()) return null;
 
     final LocalTime startTime = LocalTime.parse(configValue.substring(0, plusIndex));
 

@@ -54,9 +54,9 @@ public final class JobManager {
 
   /**
    * The main "work" routine in taskmanager
-   * <p/>
+   * <p>
    * Loops through the task list and attempts to run each
-   * <p/>
+   * <p>
    * After tasks are run, the alert manager is triggered
    * to evaluate the subsequent state of the tasks and send
    * alerts accordingly

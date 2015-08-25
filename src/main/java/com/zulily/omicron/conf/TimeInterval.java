@@ -9,7 +9,7 @@ public class TimeInterval {
   private final LocalTime startTime;
   private final int hours;
 
-  TimeInterval(final LocalTime startTime, final int hours){
+  TimeInterval(final LocalTime startTime, final int hours) {
     this.hours = hours;
     this.startTime = startTime;
   }
@@ -22,8 +22,8 @@ public class TimeInterval {
     return hours;
   }
 
-  public Interval asInterval(final Chronology chronology){
-    DateTime start = DateTime.now(chronology).withTime(startTime.getHourOfDay(), startTime.getMinuteOfHour(), 0, 0 );
+  public Interval asInterval(final Chronology chronology) {
+    DateTime start = DateTime.now(chronology).withTime(startTime.getHourOfDay(), startTime.getMinuteOfHour(), 0, 0);
     DateTime end = start.plusHours(hours);
 
     return new Interval(start, end);

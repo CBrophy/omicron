@@ -74,7 +74,7 @@ public class Schedule {
   public LocalDateTime getNextRunAfter(final LocalDateTime localDateTime) {
     checkNotNull(localDateTime, "localDateTime");
 
-    int hour  = localDateTime.getHourOfDay();
+    int hour = localDateTime.getHourOfDay();
     int minute = localDateTime.getMinuteOfHour();
 
     // It's never the current minute, always the next or first available
@@ -107,7 +107,7 @@ public class Schedule {
 
   }
 
-  private LocalDateTime findRunDayCeiling(final LocalDateTime localDateTime){
+  private LocalDateTime findRunDayCeiling(final LocalDateTime localDateTime) {
     LocalDateTime result = new LocalDateTime(localDateTime).withMinuteOfHour(minutes.first()).withHourOfDay(hours.first());
 
 

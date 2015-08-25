@@ -7,7 +7,7 @@ import static org.junit.Assert.assertEquals;
 public class CronVariableTest {
 
   @Test
-  public void testVariableSubstitution(){
+  public void testVariableSubstitution() {
     CronVariable var1 = new CronVariable("VAR1", "test1");
     CronVariable var = new CronVariable("VAR", "test");
 

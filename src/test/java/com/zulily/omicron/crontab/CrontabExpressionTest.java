@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2014 zulily, Inc.
  *
@@ -42,27 +41,27 @@ public class CrontabExpressionTest {
   }
 
   @Test
-  public void commentedAndUncommentedExpressionsDoNotMatch(){
+  public void commentedAndUncommentedExpressionsDoNotMatch() {
     String testLine1 = "* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
     String testLine2 = "#* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
-    CrontabExpression expression2 = new CrontabExpression(2,testLine2);
+    CrontabExpression expression1 = new CrontabExpression(1, testLine1);
+    CrontabExpression expression2 = new CrontabExpression(2, testLine2);
 
     assertFalse(expression1.equals(expression2));
   }
 
   @Test
-  public void testMultipleLeadingHashMarks(){
+  public void testMultipleLeadingHashMarks() {
     String testLine1 = "# # #* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
     String testLine2 = "##* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
     String testLine3 = "#* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
     String testLine4 = "* * * * *  root    cd  /  && run-parts --report /etc/cron.hourly";
 
-    CrontabExpression expression1 = new CrontabExpression(1,testLine1);
-    CrontabExpression expression2 = new CrontabExpression(2,testLine2);
-    CrontabExpression expression3 = new CrontabExpression(3,testLine3);
-    CrontabExpression expression4 = new CrontabExpression(4,testLine4);
+    CrontabExpression expression1 = new CrontabExpression(1, testLine1);
+    CrontabExpression expression2 = new CrontabExpression(2, testLine2);
+    CrontabExpression expression3 = new CrontabExpression(3, testLine3);
+    CrontabExpression expression4 = new CrontabExpression(4, testLine4);
 
     assertFalse(expression1.equals(expression4));
     assertFalse(expression2.equals(expression4));

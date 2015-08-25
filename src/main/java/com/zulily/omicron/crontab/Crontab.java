@@ -24,9 +24,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.io.Files;
+import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
-import com.zulily.omicron.Utils;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,7 +43,7 @@ import static com.zulily.omicron.Utils.warn;
 
 /**
  * This class contains the logic of reading the specified crontab into memory.
- * <p/>
+ * <p>
  * Schedule rows are read in an represented as {@link com.zulily.omicron.crontab.CrontabExpression} types
  * Override rows are read in and associated with the next row that is not blank. If the next non-blank row is commented,
  * then the override will be ignored.
@@ -115,7 +115,7 @@ public final class Crontab {
 
           final CrontabExpression crontabExpression = new CrontabExpression(lineNumber, trimmed);
 
-          if(crontabExpression.isCommented() && crontabExpression.isMalformed()){
+          if (crontabExpression.isCommented() && crontabExpression.isMalformed()) {
             info("[Line: {0}] Skipping general comment", String.valueOf(lineNumber));
             continue;
           }
@@ -210,7 +210,7 @@ public final class Crontab {
       return null;
     }
 
-    String varValue = null;
+    String varValue;
 
     // var values can be quoted strings
     // in such a case, the var value is everything between the first quote

@@ -78,7 +78,7 @@ public abstract class Policy {
             continue;
           }
 
-        } else if(alert.getAlertStatus() != AlertStatus.Failure){
+        } else if (alert.getAlertStatus() != AlertStatus.Failure) {
           continue;
         }
 
@@ -115,7 +115,7 @@ public abstract class Policy {
     return lastAlertLog;
   }
 
-  protected Alert createNotApplicableAlert(final Job job){
+  protected Alert createNotApplicableAlert(final Job job) {
     return new Alert(
       "",
       job,
@@ -123,10 +123,10 @@ public abstract class Policy {
     );
   }
 
-  private boolean isDowntime(final Job job){
+  private boolean isDowntime(final Job job) {
     TimeInterval timeInterval = job.getConfiguration().getTimeInterval(ConfigKey.AlertDowntime);
 
-    if(timeInterval == null){
+    if (timeInterval == null) {
       return false;
     }
 

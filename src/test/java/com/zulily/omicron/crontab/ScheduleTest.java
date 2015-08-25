@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2014 zulily, Inc.
  *
@@ -205,14 +204,14 @@ public class ScheduleTest {
   }
 
   @Test
-  public void testNextRunAfter(){
+  public void testNextRunAfter() {
     String testLine1 = "* * * * *  root    cd / && run-parts --report /etc/cron.hourly";
     String testLine2 = "12-36 3-8 3-12 4-10 */2  root    cd / && run-parts --report /etc/cron.hourly";
 
     Schedule expression1 = new CrontabExpression(1, testLine1).createSchedule();
     Schedule expression2 = new CrontabExpression(1, testLine2).createSchedule();
 
-    LocalDateTime currentMinute = new LocalDateTime(2015,1,1,23,59);
+    LocalDateTime currentMinute = new LocalDateTime(2015, 1, 1, 23, 59);
 
     LocalDateTime nextMinute = expression1.getNextRunAfter(currentMinute);
 

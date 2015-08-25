@@ -17,13 +17,11 @@ package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.ImmutableSortedSet;
 import com.google.common.collect.Lists;
-
 import com.zulily.omicron.EvictingTreeSet;
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
-
 import com.zulily.omicron.crontab.Schedule;
 import org.joda.time.LocalDateTime;
 

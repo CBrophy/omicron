@@ -325,7 +325,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     return trimmedLine;
   }
 
-  public Schedule createSchedule(){
+  public Schedule createSchedule() {
     return new Schedule(
       getSchedulePart(ExpressionPart.Minutes),
       getSchedulePart(ExpressionPart.Hours),
@@ -335,7 +335,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     );
   }
 
-  private ImmutableSortedSet<Integer> getSchedulePart(final ExpressionPart expressionPart){
+  private ImmutableSortedSet<Integer> getSchedulePart(final ExpressionPart expressionPart) {
     ImmutableSortedSet<Integer> result = this.expressionRuntimes.get(expressionPart);
 
     return result == null ? ImmutableSortedSet.of() : result;

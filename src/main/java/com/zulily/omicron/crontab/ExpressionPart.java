@@ -37,15 +37,15 @@ enum ExpressionPart {
   private final Range<Integer> allowedRange;
   private final ImmutableMap<String, Integer> stringNameMap;
 
-  private ExpressionPart() {
+  ExpressionPart() {
     this(null, null);
   }
 
-  private ExpressionPart(final Range<Integer> allowedRange) {
+  ExpressionPart(final Range<Integer> allowedRange) {
     this(allowedRange, null);
   }
 
-  private ExpressionPart(final Range<Integer> allowedRange, final String[] stringValues) {
+  ExpressionPart(final Range<Integer> allowedRange, final String[] stringValues) {
     this.allowedRange = allowedRange;
 
     final HashMap<String, Integer> stringValuesMap = Maps.newHashMap();
@@ -69,6 +69,7 @@ enum ExpressionPart {
   /**
    * This function transforms text values such as 'sun' or 'jul'
    * into the respective index values
+   *
    * @param value The text unit to translate
    * @return The int value of the text unit
    */

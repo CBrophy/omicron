@@ -17,7 +17,6 @@ package com.zulily.omicron.alert;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;

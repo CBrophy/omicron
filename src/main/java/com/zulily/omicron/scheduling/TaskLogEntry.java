@@ -25,7 +25,7 @@ public class TaskLogEntry extends LogEntry {
   private final int taskId;
   private final TaskStatus taskStatus;
 
-  TaskLogEntry(final int taskId, final TaskStatus taskStatus, final long timestamp){
+  TaskLogEntry(final int taskId, final TaskStatus taskStatus, final long timestamp) {
     super(timestamp);
     this.taskId = taskId;
     this.taskStatus = checkNotNull(taskStatus, "taskStatus");

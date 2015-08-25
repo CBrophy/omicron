@@ -41,7 +41,7 @@ import static com.zulily.omicron.Utils.warn;
 /**
  * A running task is a single running instance of a {@link Job}
  * which is launched as the specified user using 'su'.
- * <p/>
+ * <p>
  * TODO: platform specific
  */
 public final class RunningTask implements Runnable, Comparable<RunningTask> {
@@ -211,11 +211,11 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     // This ordering in intended to be used for the
     // chronologically-dependent loop in ScheduledTask.sweepRunningTasks
     return ComparisonChain.start()
-                          .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
-                          .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
-                          .compare(this.commandLine, o.commandLine)
-                          .compare(this.pid.get(), o.pid.get())
-                          .result();
+      .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
+      .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
+      .compare(this.commandLine, o.commandLine)
+      .compare(this.pid.get(), o.pid.get())
+      .result();
   }
 
   @Override
@@ -224,10 +224,10 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     // This equivalence test is required to allow
     // RunningTask objects to be safely put into sorted sets/maps
     return o instanceof RunningTask
-           && this.commandLine.equals(((RunningTask) o).commandLine)
-           && this.pid.get() == ((RunningTask) o).pid.get()
-           && this.startTimeMilliseconds.get() == ((RunningTask) o).startTimeMilliseconds.get()
-           && this.launchTimeMilliseconds == ((RunningTask) o).launchTimeMilliseconds;
+      && this.commandLine.equals(((RunningTask) o).commandLine)
+      && this.pid.get() == ((RunningTask) o).pid.get()
+      && this.startTimeMilliseconds.get() == ((RunningTask) o).startTimeMilliseconds.get()
+      && this.launchTimeMilliseconds == ((RunningTask) o).launchTimeMilliseconds;
   }
 
   @Override
@@ -293,34 +293,37 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   }
 
   private List<String> getPidList() throws IOException, InterruptedException {
-    Process pidList = new ProcessBuilder(configuration.getString(ConfigKey.CommandPstree), String.valueOf(getPid()), "-p", "-a", "-l")
+    final Process pidListProcess = new ProcessBuilder(configuration.getString(ConfigKey.CommandPstree), String.valueOf(getPid()), "-p", "-a", "-l")
       .start();
 
-    BufferedReader input = new BufferedReader(
+    final BufferedReader input = new BufferedReader(
       new
-        InputStreamReader(pidList.getInputStream())
+        InputStreamReader(pidListProcess.getInputStream())
     );
 
-    BufferedReader error = new BufferedReader(
+    final BufferedReader error = new BufferedReader(
       new
-        InputStreamReader(pidList.getErrorStream())
+        InputStreamReader(pidListProcess.getErrorStream())
     );
 
-    List<String> results = new ArrayList<>();
+    final List<String> results = new ArrayList<>();
 
-    String line = null;
+    String line;
 
     while ((line = input.readLine()) != null) {
       String command = COMMA_SPLITTER.splitToList(line).get(1);
 
-      results.add(command.substring(0,command.indexOf(' ')));
+      results.add(command.substring(0, command.indexOf(' ')));
     }
 
     while ((line = error.readLine()) != null) {
       error("Error getting pid list for pid {0}: {1}", String.valueOf(getPid()), line);
     }
 
-    pidList.waitFor();
+    pidListProcess.waitFor();
+
+    input.close();
+    error.close();
 
     return results;
   }

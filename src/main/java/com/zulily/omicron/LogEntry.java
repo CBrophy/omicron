@@ -30,10 +30,11 @@ public abstract class LogEntry implements Comparable<LogEntry> {
   private final long timestamp;
   private final long entryId = ENTRY_IDS.incrementAndGet();
 
-  public LogEntry(){
+  public LogEntry() {
     this.timestamp = DateTime.now().getMillis();
   }
-  public LogEntry(final long timestamp){
+
+  public LogEntry(final long timestamp) {
     checkArgument(timestamp > 0, "timestamp must be positive");
 
     this.timestamp = timestamp;

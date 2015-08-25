@@ -327,12 +327,18 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
   public Schedule createSchedule(){
     return new Schedule(
-      this.expressionRuntimes.get(ExpressionPart.Minutes),
-      this.expressionRuntimes.get(ExpressionPart.Hours),
-      this.expressionRuntimes.get(ExpressionPart.DaysOfMonth),
-      this.expressionRuntimes.get(ExpressionPart.Months),
-      this.expressionRuntimes.get(ExpressionPart.DaysOfWeek)
+      getSchedulePart(ExpressionPart.Minutes),
+      getSchedulePart(ExpressionPart.Hours),
+      getSchedulePart(ExpressionPart.DaysOfMonth),
+      getSchedulePart(ExpressionPart.Months),
+      getSchedulePart(ExpressionPart.DaysOfWeek)
     );
+  }
+
+  private ImmutableSortedSet<Integer> getSchedulePart(final ExpressionPart expressionPart){
+    ImmutableSortedSet<Integer> result = this.expressionRuntimes.get(expressionPart);
+
+    return result == null ? ImmutableSortedSet.of() : result;
   }
 
 }

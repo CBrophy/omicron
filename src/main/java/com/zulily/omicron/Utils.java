@@ -16,6 +16,7 @@
 package com.zulily.omicron;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
@@ -37,6 +38,7 @@ public final class Utils {
   public final static long DEFAULT_TIMESTAMP = 0L;
 
   public final static Splitter COMMA_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
+  public final static Joiner COMMA_JOINER = Joiner.on(',').skipNulls();
   public final static Splitter EQUAL_SPLITTER = Splitter.on('=').trimResults().omitEmptyStrings();
   public final static Splitter DOT_SPLITTER = Splitter.on('.').trimResults().omitEmptyStrings();
   public final static Splitter WHITESPACE_SPLITTER = Splitter.on(CharMatcher.WHITESPACE).trimResults().omitEmptyStrings();

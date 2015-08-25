@@ -53,7 +53,7 @@ public class MalformedExpression extends Policy {
 
     final AlertStatus alertStatus = crontabExpression.isMalformed() && minutesMalformed > malformedAlertDelaylMinutes ? AlertStatus.Failure : AlertStatus.Success;
 
-    StringBuilder messageBuilder = new StringBuilder(alertStatus == AlertStatus.Failure ? "FAILED: " : "SUCCESS: ").append(NAME).append(" -> ");
+    StringBuilder messageBuilder = new StringBuilder(NAME).append(" -> ");
 
     if (alertStatus == AlertStatus.Failure) {
       messageBuilder = messageBuilder

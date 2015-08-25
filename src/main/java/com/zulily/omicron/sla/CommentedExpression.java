@@ -53,7 +53,7 @@ public class CommentedExpression extends Policy {
     // SUCCESS: Commented_Expression-> expression uncommented and scheduled to run
     // FAILED: Commented_Expression-> row is commented and disabled (commented out for 40 minutes; threshold set to 20)
 
-    StringBuilder messageBuilder = new StringBuilder(alertStatus == AlertStatus.Failure ? "FAILED: " : "SUCCESS: ").append(NAME).append("->");
+    StringBuilder messageBuilder = new StringBuilder(NAME).append("->");
 
     if (alertStatus == AlertStatus.Failure) {
       messageBuilder = messageBuilder

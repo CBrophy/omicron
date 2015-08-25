@@ -38,7 +38,12 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public final class TimeSinceLastSuccess extends Policy {
 
-  private final static ImmutableSet<TaskStatus> STATUS_FILTER = ImmutableSet.of(TaskStatus.Complete, TaskStatus.Error, TaskStatus.FailedStart, TaskStatus.Started);
+  private final static ImmutableSet<TaskStatus> STATUS_FILTER = ImmutableSet.of(
+    TaskStatus.Complete,
+    TaskStatus.Error,
+    TaskStatus.FailedStart,
+    TaskStatus.Started
+  );
   private final static String NAME = "Time_Since_Success";
 
   /**
@@ -64,11 +69,16 @@ public final class TimeSinceLastSuccess extends Policy {
 
     // The task has never been evaluated to run because it's new or it's not considered to be runnable to begin with
     // We cannot logically evaluate this alert
-    if (!job.isRunnable() || !job.isActive() || !job.hasLogEntries()) {
+    if (!job.isRunnable() || !job.isActive()) {
       return createNotApplicableAlert(job);
     }
 
     final ImmutableSortedSet<TaskLogEntry> logView = job.filterLog(STATUS_FILTER);
+
+    // No observable status changes in the task log - still nothing to do
+    if (logView.isEmpty()) {
+      return createNotApplicableAlert(job);
+    }
 
     // Just succeed if the last log status is complete
     // This also avoids false alerts during schedule gaps
@@ -111,24 +121,47 @@ public final class TimeSinceLastSuccess extends Policy {
 
   }
 
-  private boolean alertedOnceSinceLastActive(final long lastActivityTimestamp, final long jobId) {
+  private boolean alertedOnceSinceLastActive(
+    final long lastActivityTimestamp,
+    final long jobId
+  ) {
     AlertLogEntry alertLogEntry = getLastAlertLog().get(jobId);
 
     return alertLogEntry == null || (alertLogEntry.getStatus() == AlertStatus.Failure && alertLogEntry.getTimestamp() > lastActivityTimestamp);
   }
 
-  private Alert createAlert(final Job job, final TaskLogEntry baselineTaskLogEntry, final AlertStatus alertStatus) {
+  private Alert createAlert(
+    final Job job,
+    final TaskLogEntry baselineTaskLogEntry,
+    final AlertStatus alertStatus
+  ) {
 
-    checkArgument(alertStatus == AlertStatus.Success || alertStatus == AlertStatus.Failure, "Alert status must be either success or failure");
+    checkArgument(
+      alertStatus == AlertStatus.Success || alertStatus == AlertStatus.Failure,
+      "Alert status must be either success or failure"
+    );
 
-    StringBuilder messageBuilder = new StringBuilder(alertStatus == AlertStatus.Success ? "SUCCESS: " : "FAILURE: ").append(NAME).append(" -> ");
+    StringBuilder messageBuilder = new StringBuilder(NAME).append(" -> ");
 
     messageBuilder = messageBuilder.append(baselineTaskLogEntry.getTaskStatus() == TaskStatus.Complete ? " last complete run was at " : " no successful runs. Scheduled since ");
-    messageBuilder = messageBuilder.append((new LocalDateTime(baselineTaskLogEntry.getTimestamp(), job.getConfiguration().getChronology())).toString("yyyyMMdd HH:mm"));
+    messageBuilder = messageBuilder.append(
+      (new LocalDateTime(
+        baselineTaskLogEntry.getTimestamp(),
+        job.getConfiguration().getChronology()
+      )).toString("yyyyMMdd HH:mm")
+    );
     messageBuilder = messageBuilder.append(" ").append(job.getConfiguration().getChronology().getZone().toString());
-    messageBuilder = messageBuilder.append(" (").append(TimeUnit.MILLISECONDS.toMinutes(DateTime.now().getMillis() - baselineTaskLogEntry.getTimestamp())).append(" minutes ago)");
+    messageBuilder = messageBuilder.append(" (").append(
+      TimeUnit.MILLISECONDS.toMinutes(
+        DateTime.now()
+                .getMillis() - baselineTaskLogEntry.getTimestamp()
+      )
+    ).append(" minutes ago)");
 
-    messageBuilder = messageBuilder.append("\nThreshold set to ").append(job.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess));
+    messageBuilder = messageBuilder.append("\nThreshold set to ").append(
+      job.getConfiguration()
+         .getInt(ConfigKey.SLAMinutesSinceSuccess)
+    );
 
     return new Alert(messageBuilder.toString(), job, alertStatus);
   }

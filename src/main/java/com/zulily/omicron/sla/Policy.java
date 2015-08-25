@@ -78,6 +78,8 @@ public abstract class Policy {
             continue;
           }
 
+        } else if(alert.getAlertStatus() != AlertStatus.Failure){
+          continue;
         }
 
         lastAlertLog.put(job.getJobId(), new AlertLogEntry(job.getJobId(), alert.getAlertStatus()));

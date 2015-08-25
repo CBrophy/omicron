@@ -17,14 +17,23 @@ package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.ComparisonChain;
 import com.zulily.omicron.Utils;
+import com.zulily.omicron.conf.ConfigKey;
+import com.zulily.omicron.conf.Configuration;
 import org.joda.time.DateTime;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.zulily.omicron.Utils.COMMA_JOINER;
+import static com.zulily.omicron.Utils.COMMA_SPLITTER;
 import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
@@ -32,7 +41,7 @@ import static com.zulily.omicron.Utils.warn;
 /**
  * A running task is a single running instance of a {@link Job}
  * which is launched as the specified user using 'su'.
- * <p>
+ * <p/>
  * TODO: platform specific
  */
 public final class RunningTask implements Runnable, Comparable<RunningTask> {
@@ -41,8 +50,8 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private final String commandLine;
   private final String executingUser;
   private final Thread thread;
-  private final long timeoutMinutes;
   private final int taskId;
+  private final Configuration configuration;
 
   // These values are read by the parent thread to track execution
   private AtomicLong startTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
@@ -55,14 +64,15 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     final int taskId,
     final String commandLine,
     final String executingUser,
-    final long timeoutMinutes) {
+    final Configuration configuration
+  ) {
 
     this.taskId = taskId;
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.executingUser = checkNotNull(executingUser, "executingUser");
     this.launchTimeMilliseconds = DateTime.now().getMillis();
     this.thread = new Thread(this);
-    this.timeoutMinutes = timeoutMinutes;
+    this.configuration = configuration;
   }
 
   @Override
@@ -88,6 +98,14 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
       this.pid.set(determinePid(process));
 
+      info(
+        "PID {0} -> Executed: {1}",
+        String.valueOf(getPid()),
+        commandLine
+      );
+
+      final int timeoutMinutes = configuration.getInt(ConfigKey.TaskTimeoutMinutes);
+
       // If a timeout is set, then we must enter an isAlive loop test
       // after the kill command is issued otherwise the unkillable
       // process may pile up on the host
@@ -98,7 +116,11 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
         while (process.isAlive()) {
 
           if (killCount > 1) {
-            error("{0} attempts to kill process after timeout have failed: {0}", String.valueOf(killCount), commandLine);
+            error(
+              "{0} attempts to kill process after timeout have failed: {0}",
+              String.valueOf(killCount),
+              commandLine
+            );
           }
 
           boolean finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES);
@@ -109,9 +131,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
           } else {
 
-            warn("Running process timeout at {0} minutes: {1}", String.valueOf(timeoutMinutes), commandLine);
-
-            process.destroyForcibly();
+            kill();
 
             this.taskStatus = TaskStatus.Killed;
 
@@ -125,7 +145,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
       }
 
       // Don't overwrite killed state
-      if(taskStatus == TaskStatus.FailedStart){
+      if (taskStatus == TaskStatus.FailedStart) {
         this.taskStatus = this.getReturnCode() == 0 ? TaskStatus.Complete : TaskStatus.Error;
       }
 
@@ -191,11 +211,11 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     // This ordering in intended to be used for the
     // chronologically-dependent loop in ScheduledTask.sweepRunningTasks
     return ComparisonChain.start()
-      .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
-      .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
-      .compare(this.commandLine, o.commandLine)
-      .compare(this.pid.get(), o.pid.get())
-      .result();
+                          .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
+                          .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
+                          .compare(this.commandLine, o.commandLine)
+                          .compare(this.pid.get(), o.pid.get())
+                          .result();
   }
 
   @Override
@@ -204,10 +224,10 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
     // This equivalence test is required to allow
     // RunningTask objects to be safely put into sorted sets/maps
     return o instanceof RunningTask
-      && this.commandLine.equals(((RunningTask) o).commandLine)
-      && this.pid.get() == ((RunningTask) o).pid.get()
-      && this.startTimeMilliseconds.get() == ((RunningTask) o).startTimeMilliseconds.get()
-      && this.launchTimeMilliseconds == ((RunningTask) o).launchTimeMilliseconds;
+           && this.commandLine.equals(((RunningTask) o).commandLine)
+           && this.pid.get() == ((RunningTask) o).pid.get()
+           && this.startTimeMilliseconds.get() == ((RunningTask) o).startTimeMilliseconds.get()
+           && this.launchTimeMilliseconds == ((RunningTask) o).launchTimeMilliseconds;
   }
 
   @Override
@@ -249,5 +269,64 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
   public TaskStatus getTaskStatus() {
     return taskStatus;
+  }
+
+  private void kill() throws IOException, InterruptedException {
+    if (getPid() > -1L) {
+      // JVM cannot kill children of child processes - only external kill will work
+
+      final List<String> pidList = getPidList();
+
+      warn(
+        "Timeout after {0} minutes. Killing running process PID and any children: {1}",
+        configuration.getString(ConfigKey.TaskTimeoutMinutes),
+        COMMA_JOINER.join(pidList)
+      );
+
+      for (String pid : pidList) {
+        Runtime.getRuntime().exec("kill -9 " + pid);
+      }
+
+    } else {
+      warn("Could not kill task {0} since the pid could not be retrieved", commandLine);
+    }
+  }
+
+  private List<String> getPidList() throws IOException, InterruptedException {
+    final String pidListCommand = configuration.getString(ConfigKey.PidListCommand).replace(
+      "$PID",
+      String.valueOf(getPid())
+    );
+
+    Process pidList = new ProcessBuilder(pidListCommand)
+      .start();
+
+    BufferedReader input = new BufferedReader(
+      new
+        InputStreamReader(pidList.getInputStream())
+    );
+
+    BufferedReader error = new BufferedReader(
+      new
+        InputStreamReader(pidList.getErrorStream())
+    );
+
+    List<String> results = new ArrayList<>();
+
+    String line = null;
+
+    while ((line = input.readLine()) != null) {
+      String command = COMMA_SPLITTER.splitToList(line).get(1);
+
+      results.add(command.substring(0,command.indexOf(' ')));
+    }
+
+    while ((line = error.readLine()) != null) {
+      error("Error getting pid list for pid {0}: {1}", String.valueOf(getPid()), line);
+    }
+
+    pidList.waitFor();
+
+    return results;
   }
 }

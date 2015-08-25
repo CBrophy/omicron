@@ -124,9 +124,7 @@ public final class Job implements Comparable<Job> {
 
     if (shouldRunNow()) {
 
-      info("[scheduled@{0} {1}] Executing: {2}", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), commandLine);
-
-      final RunningTask runningTask = new RunningTask(scheduledRunCount, commandLine, executingUser, configuration.getInt(ConfigKey.TaskTimeoutMinutes));
+      final RunningTask runningTask = new RunningTask(scheduledRunCount, commandLine, executingUser, configuration);
 
       // Most recent run to the start of the list to
       // allow ordered deque from the end of the list
@@ -134,9 +132,17 @@ public final class Job implements Comparable<Job> {
 
       runningTask.start();
 
-      writeLogEntry(new TaskLogEntry(runningTask.getTaskId(), TaskStatus.Started, runningTask.getStartTimeMilliseconds()));
+      writeLogEntry(
+        new TaskLogEntry(
+          runningTask.getTaskId(),
+          TaskStatus.Started,
+          runningTask.getStartTimeMilliseconds()
+        )
+      );
 
       this.nextExecutionTimestamp = this.schedule.getNextRunAfter(localDateTime).toDateTime().getMillis();
+
+      info("[scheduled@{0} {1}] Executing job on line: {2}", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), String.valueOf(crontabExpression.getLineNumber()));
 
       return true;
 

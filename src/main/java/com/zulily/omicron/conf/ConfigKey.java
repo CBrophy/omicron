@@ -46,6 +46,8 @@ public enum ConfigKey {
   SLACommentedExpressionAlertDelayMinutes("sla.commented.expression.alert.delay.minutes", "-1", true),
   SLAMalformedExpressionAlertDelayMinutes("sla.malformed.expression.alert.delay.minutes", "-1", true),
 
+  PidListCommand("pid.list.command","pstree $PID -p -a -l", false),
+
   Unknown("", "", false);
 
   private final String rawName;

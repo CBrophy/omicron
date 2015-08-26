@@ -26,12 +26,9 @@ import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.zulily.omicron.Utils;
 import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.SortedSet;
 import java.util.TreeSet;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -245,22 +242,6 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     return ImmutableSortedSet.copyOf(results);
   }
 
-  public Set<Integer> getMinutes() { return this.expressionRuntimes.get(ExpressionPart.Minutes); }
-
-  public SortedSet<Integer> getHours() {
-    return this.expressionRuntimes.get(ExpressionPart.Hours);
-  }
-
-  public SortedSet<Integer> getDays() {
-    return this.expressionRuntimes.get(ExpressionPart.DaysOfMonth);
-  }
-
-  public SortedSet<Integer> getMonths() { return this.expressionRuntimes.get(ExpressionPart.Months); }
-
-  public SortedSet<Integer> getDaysOfWeek() {
-    return this.expressionRuntimes.get(ExpressionPart.DaysOfWeek);
-  }
-
   public String getRawExpression() {return this.rawExpression;}
 
   public String getExecutingUser() {return this.executingUser;}
@@ -281,18 +262,6 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
   public long getTimestamp() {
     return timestamp;
-  }
-
-  public boolean timeInSchedule(final LocalDateTime localDateTime) {
-    checkNotNull(localDateTime, "localDateTime");
-
-    // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match crontab expression range of 0-6
-    // see evaluateExpressionPart() comments for more information
-    return getDaysOfWeek().contains(localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek())
-      && getMonths().contains(localDateTime.getMonthOfYear())
-      && getDays().contains(localDateTime.getDayOfMonth())
-      && getHours().contains(localDateTime.getHourOfDay())
-      && getMinutes().contains(localDateTime.getMinuteOfHour());
   }
 
   @Override
@@ -354,6 +323,27 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     }
 
     return trimmedLine;
+  }
+
+  /**
+   * Creates a schedule object from the crontab expression
+   *
+   * @return The new schedule instance
+   */
+  public Schedule createSchedule() {
+    return new Schedule(
+      getSchedulePart(ExpressionPart.Minutes),
+      getSchedulePart(ExpressionPart.Hours),
+      getSchedulePart(ExpressionPart.DaysOfMonth),
+      getSchedulePart(ExpressionPart.Months),
+      getSchedulePart(ExpressionPart.DaysOfWeek)
+    );
+  }
+
+  private ImmutableSortedSet<Integer> getSchedulePart(final ExpressionPart expressionPart) {
+    ImmutableSortedSet<Integer> result = this.expressionRuntimes.get(expressionPart);
+
+    return result == null ? ImmutableSortedSet.of() : result;
   }
 
 }

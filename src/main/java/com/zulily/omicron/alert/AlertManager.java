@@ -17,36 +17,30 @@ package com.zulily.omicron.alert;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-
-import com.google.common.collect.Sets;
-import com.google.common.collect.TreeMultimap;
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
-import com.zulily.omicron.scheduling.ScheduledTask;
+import com.zulily.omicron.scheduling.Job;
 import com.zulily.omicron.sla.CommentedExpression;
 import com.zulily.omicron.sla.MalformedExpression;
 import com.zulily.omicron.sla.Policy;
 import com.zulily.omicron.sla.TimeSinceLastSuccess;
-import org.joda.time.DateTime;
 
 import javax.mail.internet.AddressException;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
-import static com.zulily.omicron.Utils.warn;
 
 
 /**
- * The alert manager tracks the state of alerts across sla policies for all scheduled tasks.
- * <p/>
- * It is also responsible for performing the act of sending a notification in a non-blocking way.
- * <p/>
+ * The alert manager validates the executing jobs against a list of known SLAs and
+ * will send email notifications when failures/successes are detected
+ * <p>
  * See: {@link com.zulily.omicron.sla.Policy}, {@link com.zulily.omicron.alert.Alert}
  */
 public final class AlertManager {
@@ -89,149 +83,39 @@ public final class AlertManager {
     }
   }
 
-  private void evaluateSLAs(final ScheduledTask scheduledTask) {
-
-    // Ignore alerts on inactive tasks
-    if (!scheduledTask.isActive()) {
-      return;
-    }
-
-    for (Policy slaPolicy : slaPolicies) {
-
-      if(slaPolicy.isDisabled(scheduledTask)){
-        continue;
-      }
-
-      final Alert newAlert = slaPolicy.evaluate(scheduledTask);
-
-      if (newAlert != null) {
-
-        final Alert existingAlert = scheduledTask.getPolicyAlerts().get(slaPolicy.getName());
-
-        if (isSilentSuccess(existingAlert, newAlert)) {
-          // We don't care about success alerts unless there is an existing
-          // failure, indicating a recovery state to notify against
-
-          continue;
-        }
-
-        if (isFailureUpdate(existingAlert, newAlert)) {
-          // The concept is that the policy alert message will may have changed (i.e. new failure durations/state, etc)
-          // so overwrite the existing alert with the most recent outcome to get any updates
-          //
-          // However, we *do* need the last alert timestamp from the old alert instance
-          // to prevent spamming alerts until the alert delay timeout is over
-
-          newAlert.setLastAlertTimestamp(existingAlert.getLastAlertTimestamp());
-
-        }
-
-        // the remaining states are
-        // recovery = existingAlert.isFailed and !newAlert.isFailed -> just put newAlert
-        // newFailure = existingAlert is null && newAlert.isFailed -> just put newAlert
-        //
-        // in either case, there is no longer a need to test the existing alert
-        // and it doesn't matter what the failure state of the new alert might be
-
-        scheduledTask.getPolicyAlerts().put(slaPolicy.getName(), newAlert);
-
-      }
-
-    }
-
-  }
-
-  private static boolean isSilentSuccess(final Alert existingAlert, final Alert newAlert) {
-    return existingAlert == null && !newAlert.isFailed();
-  }
-
-
-  private static boolean isFailureUpdate(final Alert existingAlert, final Alert newAlert) {
-    return existingAlert != null && existingAlert.isFailed() && newAlert.isFailed();
-  }
-
   /**
-   * Evaluates the passed in collection of {@link com.zulily.omicron.scheduling.ScheduledTask} instances
+   * Evaluates the passed in collection of {@link Job} instances
    * against the list of known {@link com.zulily.omicron.sla.Policy} implementations
    *
    * @param scheduledTasks The scheduled tasks to evaluate
    */
-  public void sendAlerts(final Iterable<ScheduledTask> scheduledTasks) {
+  public void sendAlerts(final Iterable<Job> scheduledTasks) {
 
     // Group all alerts into a single email try to mitigate getting mobbed by many single alert messages
 
-    final TreeMultimap<String, Alert> alertsToSend = TreeMultimap.create();
+    final List<Alert> alertsToSend = new ArrayList<>();
 
-    for (final ScheduledTask scheduledTask : scheduledTasks) {
+    for (Policy slaPolicy : slaPolicies) {
 
-      if(!scheduledTask.isActive()){
-        // Do not send alerts on inactive tasks
-        continue;
-      }
-
-      evaluateSLAs(scheduledTask);
-
-      if (scheduledTask.getPolicyAlerts().isEmpty()) {
-        continue;
-      }
-
-      if (!scheduledTask.getConfiguration().getBoolean(ConfigKey.AlertEmailEnabled)) {
-
-        warn("{0} Unsent policy alerts cleared due to disabled email alerting in config for: {1}", String.valueOf(scheduledTask.getPolicyAlerts().size()), scheduledTask.toString());
-
-        scheduledTask.getPolicyAlerts().clear();
-
-        continue;
-
-      }
-
-      final int alertMinutesDelayRepeat = scheduledTask.getConfiguration().getInt(ConfigKey.AlertMinutesDelayRepeat);
-
-      // Some alerts aren't meant to be repeated (recovery) so remove them afterwards
-      final HashSet<String> policyAlertsToRemove = Sets.newHashSet();
-
-      for (final Alert alert : scheduledTask.getPolicyAlerts().values()) {
-
-        if (skipAlert(alert, alertMinutesDelayRepeat)) {
-          continue;
-        }
-
-
-        //Send recovery alerts immediately and don't repeat them
-        if (!alert.isFailed()) {
-
-          policyAlertsToRemove.add(alert.getPolicyName());
-
-        }
-
-        alert.setLastAlertTimestamp(DateTime.now().getMillis());
-
-        alertsToSend.put(scheduledTask.toString(), alert);
-
-      }
-
-      for (final String policyName : policyAlertsToRemove) {
-        scheduledTask.getPolicyAlerts().remove(policyName);
-      }
+      alertsToSend.addAll(slaPolicy.evaluate(scheduledTasks));
 
     }
 
-    this.threadPool.submit(new SendEmailRunnable(alertsToSend, this.email));
+    if (!alertsToSend.isEmpty()) {
+      this.threadPool.submit(new SendEmailRunnable(alertsToSend, this.email));
+    }
 
   }
 
-  private static boolean skipAlert(final Alert alert, final int alertMinutesDelayRepeat) {
-    return alert.isFailed() && DateTime.now().getMillis() - alert.getLastAlertTimestamp() <= TimeUnit.MINUTES.toMillis(alertMinutesDelayRepeat);
-  }
 
   /**
    * This runnable does the work of building the email body and sending it out to the SMTP server
    */
   private static class SendEmailRunnable implements Runnable {
-    private final TreeMultimap<String, Alert> alerts;
+    private final List<Alert> alerts;
     private final com.zulily.omicron.alert.EmailSender email;
 
-    SendEmailRunnable(final TreeMultimap<String, Alert> alerts, final com.zulily.omicron.alert.EmailSender email) {
+    SendEmailRunnable(final List<Alert> alerts, final com.zulily.omicron.alert.EmailSender email) {
       this.alerts = checkNotNull(alerts, "alerts");
       this.email = checkNotNull(email, "email");
     }
@@ -265,29 +149,25 @@ public final class AlertManager {
         int failedCount = 0;
         int successCount = 0;
 
-        for (final String commandLine : alerts.keySet()) {
+        for (final Alert alert : alerts) {
 
-          bodyBuilder = bodyBuilder.append(commandLine).append("\n\n");
+          bodyBuilder = bodyBuilder.append(alert.getJob().getCrontabExpression()).append("\n\n");
 
-          for (final Alert alert : alerts.get(commandLine)) {
+          if (alert.getAlertStatus() == AlertStatus.Failure) {
+            failedCount++;
 
-            if (alert.isFailed()) {
-              failedCount++;
+            bodyBuilder = bodyBuilder.append("\tFAIL: ");
+          } else {
+            successCount++;
 
-              bodyBuilder = bodyBuilder.append("\tFAIL: ");
-            } else {
-              successCount++;
-
-              bodyBuilder = bodyBuilder.append("\tSUCCESS: ");
-            }
-
-            bodyBuilder = bodyBuilder.append(alert.getMessage()).append('\n');
-
+            bodyBuilder = bodyBuilder.append("\tSUCCESS: ");
           }
 
-          bodyBuilder = bodyBuilder.append('\n');
+          bodyBuilder = bodyBuilder.append(alert.getMessage()).append('\n');
 
         }
+
+        bodyBuilder = bodyBuilder.append('\n');
 
         if (failedCount > 0) {
           subjectBuilder.append(" failures: ").append(failedCount);

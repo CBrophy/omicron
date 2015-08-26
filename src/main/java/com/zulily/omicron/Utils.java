@@ -16,6 +16,7 @@
 package com.zulily.omicron;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
@@ -37,6 +38,7 @@ public final class Utils {
   public final static long DEFAULT_TIMESTAMP = 0L;
 
   public final static Splitter COMMA_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
+  public final static Joiner COMMA_JOINER = Joiner.on(',').skipNulls();
   public final static Splitter EQUAL_SPLITTER = Splitter.on('=').trimResults().omitEmptyStrings();
   public final static Splitter DOT_SPLITTER = Splitter.on('.').trimResults().omitEmptyStrings();
   public final static Splitter WHITESPACE_SPLITTER = Splitter.on(CharMatcher.WHITESPACE).trimResults().omitEmptyStrings();
@@ -93,7 +95,7 @@ public final class Utils {
 
   /**
    * Returns a hostname from the current host
-   * <p/>
+   * <p>
    * TODO: Platform dependent
    *
    * @return Either the configured host name, or the hostname of the local IP
@@ -114,7 +116,7 @@ public final class Utils {
 
   /**
    * Determines if omicron is running as a root user
-   * <p/>
+   * <p>
    * TODO: Platform dependent
    *
    * @return true if the current user.name is root
@@ -125,6 +127,7 @@ public final class Utils {
 
   /**
    * Shortcut function to get a {@link org.joda.time.Chronology} object from a timezone string
+   *
    * @param timeZoneString Time Zone string. see {@link org.joda.time.DateTimeZone}
    * @return {@link org.joda.time.Chronology} associated with the specified timezone
    */
@@ -135,6 +138,7 @@ public final class Utils {
   /**
    * Convenience function to get either the lastModified timestamp from a
    * specified file
+   *
    * @param filePath The file path to get the timestamp from
    * @return The file lastModified timestamp, or DEFAULT_TIMESTAMP if the file cannot be read
    */

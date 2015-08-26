@@ -15,53 +15,124 @@
  */
 package com.zulily.omicron.sla;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSortedSet;
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.alert.Alert;
+import com.zulily.omicron.alert.AlertLogEntry;
+import com.zulily.omicron.alert.AlertStatus;
 import com.zulily.omicron.conf.ConfigKey;
-import com.zulily.omicron.crontab.CrontabExpression;
-import com.zulily.omicron.scheduling.ScheduledTask;
-import org.joda.time.Chronology;
+import com.zulily.omicron.scheduling.Job;
+import com.zulily.omicron.scheduling.TaskLogEntry;
+import com.zulily.omicron.scheduling.TaskStatus;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * SLA {@link com.zulily.omicron.sla.Policy} that generates alerts based on how long it's been
- * since a {@link com.zulily.omicron.scheduling.ScheduledTask} has seen a successful return code
+ * since a {@link Job} has seen a successful return code, if ever
  */
-public final class TimeSinceLastSuccess implements Policy {
+public final class TimeSinceLastSuccess extends Policy {
 
-  /**
-   * See {@link com.zulily.omicron.sla.Policy} class for function details
-   *
-   * @param scheduledTask The task to be evaluated
-   * @return Either a success or fail alert, or null if an evaluation can't be made
-   */
+  private final static ImmutableSet<TaskStatus> STATUS_FILTER = ImmutableSet.of(
+    TaskStatus.Complete,
+    TaskStatus.Error,
+    TaskStatus.FailedStart,
+    TaskStatus.Started
+  );
+  private final static String NAME = "Time_Since_Success";
+
   @Override
-  public Alert evaluate(final ScheduledTask scheduledTask) {
+  protected boolean isDisabled(final Job job) {
+    // Per config comment, -1 indicates disabled alert for this policy
+    return job.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess) == -1;
+  }
 
-    final int minutesBetweenSuccessThreshold = scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
-
+  @Override
+  protected Alert generateAlert(final Job job) {
     // The task has never been evaluated to run because it's new or it's not considered to be runnable to begin with
     // We cannot logically evaluate this alert
-    if (!scheduledTask.isRunnable() || scheduledTask.getFirstExecutionTimestamp() == Utils.DEFAULT_TIMESTAMP) {
-      return null;
+    if (!job.isRunnable() || !job.isActive()) {
+      return createNotApplicableAlert(job);
     }
 
-    // The last activity timestamp will return the last success timestamp, or the very
-    // first execution timestamp if the task has never had a successful run
-    final long lastActiveTimestamp = getLastActiveTimestamp(scheduledTask);
+    final ImmutableSortedSet<TaskLogEntry> logView = job.filterLog(STATUS_FILTER);
+
+    // No observable status changes in the task log - still nothing to do
+    if (logView.isEmpty()) {
+      return createNotApplicableAlert(job);
+    }
+
+    // Just succeed if the last log status is complete
+    // This also avoids false alerts during schedule gaps
+    if (logView.last().getTaskStatus() == TaskStatus.Complete) {
+      return createAlert(job, logView.last(), AlertStatus.Success);
+    }
+
+    // Avoid spamming alerts during gaps in the schedule
+    if (alertedOnceSinceLastActive(logView.last().getTimestamp(), job.getJobId())) {
+      return createNotApplicableAlert(job);
+    }
+
+    // The last status is either error or failed start
+    // so find that last time there was a complete, if any
+    final Optional<TaskLogEntry> latestComplete = logView
+      .descendingSet()
+      .stream()
+      .filter(entry -> entry.getTaskStatus() == TaskStatus.Complete)
+      .findFirst();
+
+    // If we've seen at least one success in recent history and a task is running,
+    // do not alert until a final status is achieved to avoid noise before potential recovery
+    if (logView.last().getTaskStatus() == TaskStatus.Started && latestComplete.isPresent()) {
+      return createNotApplicableAlert(job);
+    }
+
+    final int minutesBetweenSuccessThreshold = job.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
 
     final long currentTimestamp = DateTime.now().getMillis();
 
-    final CrontabExpression crontabExpression = scheduledTask.getCrontabExpression();
+    final TaskLogEntry baselineTaskLogEntry = latestComplete.isPresent() ? latestComplete.get() : logView.first();
 
-    final Chronology chronology = scheduledTask.getConfiguration().getChronology();
+    final long minutesIncomplete = TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - baselineTaskLogEntry.getTimestamp());
 
-    final long minutesSinceLastActivity = TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - lastActiveTimestamp);
+    if (minutesIncomplete <= minutesBetweenSuccessThreshold) {
+      return createAlert(job, baselineTaskLogEntry, AlertStatus.Success);
+    } else {
+      return createAlert(job, baselineTaskLogEntry, AlertStatus.Failure);
+    }
 
-    final boolean failed = currentTimestamp - lastActiveTimestamp > TimeUnit.MINUTES.toMillis(minutesBetweenSuccessThreshold);
+  }
+
+  @Override
+  protected String getName() {
+    return NAME;
+  }
+
+  private boolean alertedOnceSinceLastActive(
+    final long lastActivityTimestamp,
+    final long jobId
+  ) {
+    AlertLogEntry alertLogEntry = getLastAlertLog().get(jobId);
+
+    return alertLogEntry != null && (alertLogEntry.getStatus() == AlertStatus.Failure && alertLogEntry.getTimestamp() > lastActivityTimestamp);
+  }
+
+  private Alert createAlert(
+    final Job job,
+    final TaskLogEntry baselineTaskLogEntry,
+    final AlertStatus alertStatus
+  ) {
+
+    checkArgument(
+      alertStatus == AlertStatus.Success || alertStatus == AlertStatus.Failure,
+      "Alert status must be either success or failure"
+    );
 
     // Alert body looks like:
     //
@@ -69,42 +140,46 @@ public final class TimeSinceLastSuccess implements Policy {
     // FAILED: Time_Since_Success-> last success at 20141230 00:10 America/Los_Angeles (30 minutes ago; threshold set to 20)
     // FAILED: Time_Since_Success-> never successfully run. First attempted execution at 20141230 00:10 America/Los_Angeles (30 minutes ago; threshold set to 20)
 
-    StringBuilder messageBuilder = new StringBuilder(getName()).append("->");
 
-    if (scheduledTask.getTotalSuccessCount() == 0 && failed) {
-      messageBuilder = messageBuilder.append(" never successfully run. First attempted execution at ");
-    } else {
-      messageBuilder = messageBuilder.append(" last success was at ");
-    }
+    StringBuilder messageBuilder = new StringBuilder(NAME)
+      .append(" -> ");
 
-    messageBuilder = messageBuilder.append((new LocalDateTime(lastActiveTimestamp, chronology)).toString("yyyyMMdd HH:mm"));
-    messageBuilder = messageBuilder.append(" ").append(chronology.getZone().toString());
-    messageBuilder = messageBuilder.append(" (").append(minutesSinceLastActivity).append(" minutes ago; threshold set to ").append(minutesBetweenSuccessThreshold).append(")");
+    messageBuilder = messageBuilder
+      .append(baselineTaskLogEntry.getTaskStatus() == TaskStatus.Complete ? " last complete run was at " : " no successful runs. Scheduled since ");
 
-    return new Alert(
-      getName(),
-      messageBuilder.toString(),
-      crontabExpression.getLineNumber(),
-      crontabExpression.getRawExpression(),
-      failed
-    );
+    messageBuilder = messageBuilder
+      .append(
+        (new LocalDateTime(
+          baselineTaskLogEntry.getTimestamp(),
+          job.getConfiguration().getChronology()
+        )).toString("yyyyMMdd HH:mm")
+      );
 
+    messageBuilder = messageBuilder.append(" ").append(job.getConfiguration().getChronology().getZone().toString());
+
+    messageBuilder = messageBuilder
+      .append(" (")
+      .append(
+        TimeUnit.MILLISECONDS.toMinutes(
+          DateTime.now()
+            .getMillis() - baselineTaskLogEntry.getTimestamp()
+        )
+      )
+      .append(" minutes ago;");
+
+    messageBuilder = messageBuilder
+      .append(" threshold set to ")
+      .append(
+        job.getConfiguration()
+          .getInt(ConfigKey.SLAMinutesSinceSuccess)
+      )
+      .append(")");
+
+    return new Alert(messageBuilder.toString(), job, alertStatus);
   }
 
-  private long getLastActiveTimestamp(final ScheduledTask scheduledTask) {
-    return scheduledTask.getTotalSuccessCount() > 0 // if there is a last success at all
-      ? scheduledTask.getLastSuccessTimestamp() // use the timestamp
-      : scheduledTask.getFirstExecutionTimestamp(); // otherwise, use the first execution timestamp for a baseline
+  private String dumpLog(ImmutableSortedSet<TaskLogEntry> logEntries) {
+    return Utils.COMMA_JOINER.join(logEntries);
   }
 
-  @Override
-  public String getName() {
-    return "Time_Since_Success";
-  }
-
-  @Override
-  public boolean isDisabled(final ScheduledTask scheduledTask) {
-    // Per config comment, -1 indicates disabled alert for this policy
-    return scheduledTask.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess) == -1;
-  }
 }

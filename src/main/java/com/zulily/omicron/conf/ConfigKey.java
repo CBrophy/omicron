@@ -36,15 +36,19 @@ public enum ConfigKey {
   AlertEmailSmtpPort("alert.email.smtp.port", "25", false),
 
   AlertMinutesDelayRepeat("alert.minutes.delay.repeat", "20", true),
+  AlertDowntime("alert.downtime", "", true), // Specify start time and hour duration during which alerts will be suppressed: "11:00+6"
 
-  TaskDuplicateAllowedCount("task.duplicate.allowed.count", "2", true),
+  TaskMaxInstanceCount("task.max.instance.count", "1", true),
   TaskCriticalReturnCode("task.critical.return.code", "100", true), // expected to be between 0 and 255 according to bash man pages
-  TaskTimeoutMinutes("task.timeout.minutes", "0", true), // The number of minutes to wait before omicron will kill a task - 0 disables this feature
+  TaskTimeoutMinutes("task.timeout.minutes", "-1", true), // The number of minutes to wait before omicron will kill a task: -1 disables this feature
 
   SLAMinutesSinceSuccess("sla.minutes.since.success", "60", true),
   SLACommentedExpressionAlertDelayMinutes("sla.commented.expression.alert.delay.minutes", "-1", true),
   SLAMalformedExpressionAlertDelayMinutes("sla.malformed.expression.alert.delay.minutes", "-1", true),
-  SLADowntime("sla.downtime", "", true), // Specify a hyphen-separated 24H time range during which SLA notifications will be suppressed: "11:00-18:00"
+
+  CommandPstree("command.path.pstree", "/usr/bin/pstree", false),
+  CommandKill("command.path.kill", "/usr/bin/kill", false),
+  CommandSu("command.path.su", "/usr/bin/su", false),
 
   Unknown("", "", false);
 

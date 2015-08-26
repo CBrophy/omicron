@@ -33,7 +33,21 @@ See conf/crontab and conf/omicron.conf for deployment config examples
 Features
 ========
 
+**1.1**
+
+*   Multiple bug fixes regarding SLA enforcement and notification
+
+    **Time Since Success**: do not alert more than once per schedule gap
+    
+    **Time Since Success**: do not alert if the job has a recent success and is currently started
+    
+*   NEW config option: **task.timeout.minutes** -> Automatically kill jobs that are taking too long
+*   NEW config option: **command.path** -> Configure the location of external commands
+*   BREAKING CHANGE: **task.duplicate.allowed.count** renamed to **task.max.instance.count**
+
+
 1.0
+
 * Can be configured to prevent the same job from executing endlessly if the last scheduled execution is still running.
 * Can be configured to send alerts if a job has been unsuccessful after a given amount of time
 * Will send all-clear success alerts if a job alert recovers on its own
@@ -47,7 +61,7 @@ Features
 Notes & Concerns
 ================
 
-* SECURITY: Use at your own risk.
+* SECURITY: Use at your own risk. There are multiple potential vectors for abuse. This software is not intended for use on multi-tenant or public-facing systems.
 
 Installation
 ============

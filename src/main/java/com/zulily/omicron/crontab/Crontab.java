@@ -34,9 +34,11 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static com.zulily.omicron.Utils.COMMA_JOINER;
 import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
@@ -95,9 +97,8 @@ public final class Crontab {
         }
 
         if (line.startsWith(OVERRIDE_KEYWORD)) {
-          overrideMap = getOverrideConfiguration(line);
 
-          info("[Line: {0}] Loaded {1} overrides for next task line", String.valueOf(lineNumber), String.valueOf(overrideMap.size()));
+          overrideMap = getOverrideConfiguration(line);
 
           continue;
         }
@@ -107,6 +108,7 @@ public final class Crontab {
         final CronVariable cronVariable = getVariable(trimmed);
 
         if (cronVariable != null) {
+          info("[Line: {0}] Found variable definition: {1} -> {2}", String.valueOf(lineNumber), cronVariable.getName(), cronVariable.getValue());
           cronVariables.add(cronVariable);
           continue;
         }
@@ -116,23 +118,28 @@ public final class Crontab {
           final CrontabExpression crontabExpression = new CrontabExpression(lineNumber, trimmed);
 
           if (crontabExpression.isCommented() && crontabExpression.isMalformed()) {
-            info("[Line: {0}] Skipping general comment", String.valueOf(lineNumber));
+            info("[Line: {0}] Skipping general comment: {1}", String.valueOf(lineNumber), line);
             continue;
           }
 
-          // crontabExpression.isCommented() || crontabExpression.isMalformed()
+          // crontabExpression.isCommented() || crontabExpression.isMalformed() || normal expression
           // Commented rows that successfully parse as expressions are loaded anyways, to
           // allow for alerting of "forgotten" disabled tasks
           // Likewise, uncommented but malformed rows are also loaded so that malformed
           // alerting can be done on them
+
           results.add(crontabExpression);
 
           // The previous non-blank/commented line is an unassociated override map. Associate with this row
           if (overrideMap != null) {
 
+            info("[Line: {0}] Adding schedule with config overrides \"{1}\": {2}", String.valueOf(lineNumber), getOverrideMapString(overrideMap), crontabExpression.getCommand());
+
             rawOverrideMap.put(lineNumber, configuration.withOverrides(overrideMap));
 
             overrideMap = null;
+          } else {
+            info("[Line: {0}] Adding schedule: {1}", String.valueOf(lineNumber), crontabExpression.getCommand());
           }
 
         } catch (Exception e) {
@@ -263,5 +270,13 @@ public final class Crontab {
    */
   public ImmutableMap<Integer, Configuration> getConfigurationOverrides() {
     return configurationOverrides;
+  }
+
+  private String getOverrideMapString(final ImmutableMap<ConfigKey, String> overrideMap) {
+    return COMMA_JOINER.join(overrideMap.entrySet()
+        .stream()
+        .map(entry -> entry.getKey().getRawName() + "->" + entry.getValue())
+        .collect(Collectors.toList())
+    );
   }
 }

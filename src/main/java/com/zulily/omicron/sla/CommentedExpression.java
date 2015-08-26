@@ -73,4 +73,9 @@ public class CommentedExpression extends Policy {
       alertStatus
     );
   }
+
+  @Override
+  protected String getName() {
+    return NAME;
+  }
 }

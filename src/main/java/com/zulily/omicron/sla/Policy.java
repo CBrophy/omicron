@@ -32,6 +32,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
+import static com.zulily.omicron.Utils.info;
+
 /**
  * A Policy represents a set of rules by which a decision is made to send an alert or not
  * <p>
@@ -46,6 +48,8 @@ public abstract class Policy {
 
   protected abstract Alert generateAlert(final Job job);
 
+  protected abstract String getName();
+
   public List<Alert> evaluate(final Iterable<Job> jobs) {
 
     final List<Alert> result = new ArrayList<>();
@@ -54,39 +58,51 @@ public abstract class Policy {
 
     for (Job job : jobs) {
 
-      if (job.isActive() && !isDisabled(job) && !isDowntime(job)) {
-
-        activeJobIds.add(job.getJobId());
-
-        final Alert alert = generateAlert(job);
-
-        if (alert.getAlertStatus() == AlertStatus.NotApplicable) {
-          continue;
-        }
-
-        AlertLogEntry logEntry = lastAlertLog.get(job.getJobId());
-
-        if (logEntry != null) {
-
-          // Do not alert multiple times for success
-          if (alert.getAlertStatus() == AlertStatus.Success && logEntry.getStatus() == AlertStatus.Success) {
-            continue;
-          }
-
-          // Do not repeat alerts within the threshold
-          if (alert.getAlertStatus() == AlertStatus.Failure && delayRepeat(logEntry, job)) {
-            continue;
-          }
-
-        } else if (alert.getAlertStatus() != AlertStatus.Failure) {
-          continue;
-        }
-
-        lastAlertLog.put(job.getJobId(), new AlertLogEntry(job.getJobId(), alert.getAlertStatus()));
-
-        result.add(alert);
-
+      if (!job.isActive()) {
+        // Inactive indicates that the schedule was removed or changed
+        // writing log info is noise
+        continue;
       }
+
+      if (isDisabled(job)) {
+        info("SLA {0} disabled for line {1}", getName(), String.valueOf(job.getCrontabExpression().getLineNumber()));
+        continue;
+      }
+
+      if (isDowntime(job)) {
+        info("Currently in SLA downtime for line {0}", String.valueOf(job.getCrontabExpression().getLineNumber()));
+        continue;
+      }
+
+      activeJobIds.add(job.getJobId());
+
+      final Alert alert = generateAlert(job);
+
+      if (alert.getAlertStatus() == AlertStatus.NotApplicable) {
+        continue;
+      }
+
+      AlertLogEntry logEntry = lastAlertLog.get(job.getJobId());
+
+      if (logEntry != null) {
+
+        // Do not alert multiple times for success
+        if (alert.getAlertStatus() == AlertStatus.Success && logEntry.getStatus() == AlertStatus.Success) {
+          continue;
+        }
+
+        // Do not repeat alerts within the threshold
+        if (alert.getAlertStatus() == AlertStatus.Failure && delayRepeat(logEntry, job)) {
+          continue;
+        }
+
+      } else if (alert.getAlertStatus() != AlertStatus.Failure) {
+        continue;
+      }
+
+      lastAlertLog.put(job.getJobId(), new AlertLogEntry(job.getJobId(), alert.getAlertStatus()));
+
+      result.add(alert);
 
     }
 
@@ -134,5 +150,6 @@ public abstract class Policy {
 
     return interval.contains(DateTime.now(job.getConfiguration().getChronology()));
   }
+
 
 }

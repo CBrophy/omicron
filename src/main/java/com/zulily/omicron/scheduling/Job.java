@@ -23,6 +23,7 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 import com.zulily.omicron.crontab.Schedule;
+import org.joda.time.DateTime;
 import org.joda.time.LocalDateTime;
 
 import java.util.LinkedList;
@@ -109,7 +110,9 @@ public final class Job implements Comparable<Job> {
    */
   public boolean run() {
 
-    final LocalDateTime localDateTime = LocalDateTime.now(configuration.getChronology());
+    final DateTime now = DateTime.now();
+
+    final LocalDateTime localDateTime = new LocalDateTime(now.getMillis(), configuration.getChronology());
 
     // Cleans out old process pointers and log entries
     sweepRunningTasks();
@@ -134,19 +137,19 @@ public final class Job implements Comparable<Job> {
         new TaskLogEntry(
           runningTask.getTaskId(),
           TaskStatus.Started,
-          runningTask.getStartTimeMilliseconds()
+          now.getMillis()
         )
       );
 
       this.nextExecutionTimestamp = this.schedule.getNextRunAfter(localDateTime).toDateTime().getMillis();
 
-      info("[scheduled@{0} {1}] Executing job on line: {2}", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), String.valueOf(crontabExpression.getLineNumber()));
+      info("[executing@{0} {1}, Line: {2}] {3} ", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), String.valueOf(crontabExpression.getLineNumber()), crontabExpression.getCommand());
 
       return true;
 
     } else {
 
-      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, localDateTime.toDateTime().getMillis()));
+      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, now.getMillis()));
 
     }
 
@@ -272,7 +275,7 @@ public final class Job implements Comparable<Job> {
       taskLog
         .stream()
         .filter(entry -> statusFilter.contains(entry.getTaskStatus()))
-        .map(result::add);
+        .forEach(result::add);
 
     } finally {
       reentrantLock.unlock();

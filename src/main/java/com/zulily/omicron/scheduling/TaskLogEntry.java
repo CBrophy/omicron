@@ -38,4 +38,9 @@ public class TaskLogEntry extends LogEntry {
   public TaskStatus getTaskStatus() {
     return taskStatus;
   }
+
+  @Override
+  public String toString() {
+    return String.valueOf(getTimestamp()) + ":" + String.valueOf(taskId) + ":" + taskStatus;
+  }
 }

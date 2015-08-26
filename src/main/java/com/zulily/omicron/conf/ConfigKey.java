@@ -46,9 +46,9 @@ public enum ConfigKey {
   SLACommentedExpressionAlertDelayMinutes("sla.commented.expression.alert.delay.minutes", "-1", true),
   SLAMalformedExpressionAlertDelayMinutes("sla.malformed.expression.alert.delay.minutes", "-1", true),
 
-  CommandPstree("command.pstree", "/usr/bin/pstree", false),
-  CommandKill("command.kill", "/usr/bin/kill", false),
-  CommandSu("command.su", "/usr/bin/su", false),
+  CommandPstree("command.path.pstree", "/usr/bin/pstree", false),
+  CommandKill("command.path.kill", "/usr/bin/kill", false),
+  CommandSu("command.path.su", "/usr/bin/su", false),
 
   Unknown("", "", false);
 

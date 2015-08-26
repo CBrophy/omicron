@@ -22,7 +22,7 @@
 
   <groupId>com.zulily.omicron</groupId>
   <artifactId>omicron</artifactId>
-  <version>1.1</version>
+  <version>1.2-SNAPSHOT</version>
   <packaging>jar</packaging>
   <name>Omicron</name>
   <description>A simple replacement for crond with team task tracking features.</description>
@@ -43,7 +43,7 @@
   <scm>
     <connection>scm:git:ssh://git@github.com:zulily/omicron.git</connection>
     <developerConnection>scm:git:ssh://git@github.com:zulily/omicron.git</developerConnection>
-    <tag>omicron-1.1</tag>
+    <tag>v1.0</tag>
   </scm>
 
 

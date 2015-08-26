@@ -44,7 +44,7 @@ import static com.zulily.omicron.Utils.warn;
  * <p>
  * TODO: platform specific
  */
-public final class RunningTask implements Runnable, Comparable<RunningTask> {
+final class RunningTask implements Runnable, Comparable<RunningTask> {
 
   private final long launchTimeMilliseconds;
   private final String commandLine;
@@ -60,7 +60,7 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
   private AtomicLong pid = new AtomicLong(-1L);
   private TaskStatus taskStatus = TaskStatus.FailedStart;
 
-  public RunningTask(
+  RunningTask(
     final int taskId,
     final String commandLine,
     final String executingUser,
@@ -273,16 +273,24 @@ public final class RunningTask implements Runnable, Comparable<RunningTask> {
 
   private void kill() throws IOException, InterruptedException {
     if (getPid() > -1L) {
-      // JVM cannot kill children of child processes - only external kill will work
+      // The JVM cannot kill children of child processes - only external kill will work
 
       final List<String> pidList = getPidList();
 
       warn(
-        "Timeout after {0} minutes. Killing running process along with any children: {1}",
+        "Task timeout after {0} minutes. Killing PID tree [{1}]: {2}",
         configuration.getString(ConfigKey.TaskTimeoutMinutes),
-        COMMA_JOINER.join(pidList)
+        COMMA_JOINER.join(pidList),
+        commandLine
       );
 
+      // Throw a kill -9 at the task and all of its children
+      //
+      // Note: there is SOME risk that this will kill the wrong process.
+      //
+      // A PID can be recycled by the OS in the time it takes to kill a process
+      // and it's remaining children. The likelihood is low, as most OSes attempt
+      // to avoid recycling PIDs so quickly, but the risk is there.
       for (String pid : pidList) {
         new ProcessBuilder(configuration.getString(ConfigKey.CommandKill), "-9", pid).start();
       }

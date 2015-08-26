@@ -325,6 +325,11 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
     return trimmedLine;
   }
 
+  /**
+   * Creates a schedule object from the crontab expression
+   *
+   * @return The new schedule instance
+   */
   public Schedule createSchedule() {
     return new Schedule(
       getSchedulePart(ExpressionPart.Minutes),

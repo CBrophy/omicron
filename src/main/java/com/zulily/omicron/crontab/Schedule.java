@@ -20,6 +20,9 @@ import org.joda.time.LocalDateTime;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * Encapsulates the cron schedule whitelists and any related scheduling logic
+ */
 public class Schedule {
   private final ImmutableSortedSet<Integer> minutes;
   private final ImmutableSortedSet<Integer> hours;
@@ -61,6 +64,12 @@ public class Schedule {
     return daysOfWeek;
   }
 
+  /**
+   * Determines whether or not a localDateTime is whitelisted by the defined schedule
+   *
+   * @param localDateTime The date and time to test
+   * @return True if the time is in schedule, False otherwise
+   */
   public boolean timeInSchedule(final LocalDateTime localDateTime) {
     checkNotNull(localDateTime, "localDateTime");
 
@@ -71,6 +80,13 @@ public class Schedule {
       && minutes.contains(localDateTime.getMinuteOfHour());
   }
 
+  /**
+   * Determines the next time in the schedule whitelist after a specified
+   * starting point (exclusive)
+   *
+   * @param localDateTime The starting point
+   * @return The next expected localDateTime in the schedule whitelist
+   */
   public LocalDateTime getNextRunAfter(final LocalDateTime localDateTime) {
     checkNotNull(localDateTime, "localDateTime");
 

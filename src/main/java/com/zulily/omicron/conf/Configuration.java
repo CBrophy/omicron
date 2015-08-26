@@ -274,6 +274,12 @@ public class Configuration {
     return true;
   }
 
+  /**
+   * Returns a config value as a TimeInterval object instance
+   *
+   * @param configKey The config key to look up as a time interval
+   * @return The value as a time interval or null if the value doesn't exist
+   */
   public TimeInterval getTimeInterval(final ConfigKey configKey) {
 
     final String configValue = getString(configKey);
@@ -289,4 +295,5 @@ public class Configuration {
     return new TimeInterval(startTime, hours);
 
   }
+
 }

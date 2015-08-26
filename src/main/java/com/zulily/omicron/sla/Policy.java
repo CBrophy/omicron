@@ -32,25 +32,33 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.info;
 
 /**
  * A Policy represents a set of rules by which a decision is made to send an alert or not
  * <p>
- * A policy should return either a success or failed alert. The AlertManager class determines
- * what to ultimately do with the results
+ * The Policy object also manages the extra logic of how to handle ongoing alerts for the same job failures
  */
 public abstract class Policy {
 
   private final TreeMap<Long, AlertLogEntry> lastAlertLog = new TreeMap<>();
 
-  public abstract boolean isDisabled(final Job job);
+  protected abstract boolean isDisabled(final Job job);
 
   protected abstract Alert generateAlert(final Job job);
 
   protected abstract String getName();
 
+  /**
+   * Evaluates a list of jobs against the logic of this SLA
+   *
+   * @param jobs The jobs to evaluate
+   * @return A collection of ACTIONABLE alerts from the result
+   */
   public List<Alert> evaluate(final Iterable<Job> jobs) {
+
+    checkNotNull(jobs, "jobs");
 
     final List<Alert> result = new ArrayList<>();
 

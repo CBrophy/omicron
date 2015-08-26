@@ -18,12 +18,22 @@ package com.zulily.omicron.alert;
 
 import com.zulily.omicron.LogEntry;
 
+/**
+ * A record of the alert state for a cron job
+ */
 public class AlertLogEntry extends LogEntry {
 
   private final AlertStatus status;
   private final long jobId;
 
-  public AlertLogEntry(final long jobId, final AlertStatus status) {
+  /**
+   * Constructor
+   *
+   * @param jobId  The id of the job the alert is for
+   * @param status The state of the alert
+   */
+  public AlertLogEntry(final long jobId,
+                       final AlertStatus status) {
     super();
     this.status = status;
     this.jobId = jobId;

@@ -38,9 +38,8 @@ import static com.zulily.omicron.Utils.info;
 
 
 /**
- * The alert manager tracks the state of alerts across sla policies for all scheduled tasks.
- * <p>
- * It is also responsible for performing the act of sending a notification in a non-blocking way.
+ * The alert manager validates the executing jobs against a list of known SLAs and
+ * will send email notifications when failures/successes are detected
  * <p>
  * See: {@link com.zulily.omicron.sla.Policy}, {@link com.zulily.omicron.alert.Alert}
  */

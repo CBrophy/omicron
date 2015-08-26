@@ -24,16 +24,28 @@ import java.util.concurrent.atomic.AtomicLong;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * A basic log entry object with a timestamp and unique entryId
+ */
 public abstract class LogEntry implements Comparable<LogEntry> {
   private static final AtomicLong ENTRY_IDS = new AtomicLong();
 
   private final long timestamp;
   private final long entryId = ENTRY_IDS.incrementAndGet();
 
+  /**
+   * Constructor - assumes DateTime.now() as the timestamp
+   * of the entry
+   */
   public LogEntry() {
     this.timestamp = DateTime.now().getMillis();
   }
 
+  /**
+   * Constructor
+   *
+   * @param timestamp The specific timestamp of this entry
+   */
   public LogEntry(final long timestamp) {
     checkArgument(timestamp > 0, "timestamp must be positive");
 

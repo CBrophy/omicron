@@ -20,6 +20,9 @@ import com.zulily.omicron.LogEntry;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+/**
+ * A log entry of activity for scheduled tasks
+ */
 public class TaskLogEntry extends LogEntry {
 
   private final int taskId;

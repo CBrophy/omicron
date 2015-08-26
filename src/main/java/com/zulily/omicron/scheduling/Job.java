@@ -51,7 +51,7 @@ public final class Job implements Comparable<Job> {
   private final String executingUser;
   private Configuration configuration;
   private final LinkedList<RunningTask> runningTasks = Lists.newLinkedList();
-  private final EvictingTreeSet<TaskLogEntry> taskLog = new EvictingTreeSet<>(500, true);
+  private final EvictingTreeSet<TaskLogEntry> taskLog = new EvictingTreeSet<>(50, true);
   private final ReentrantLock reentrantLock = new ReentrantLock(true);
 
   private boolean active = true;

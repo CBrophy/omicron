@@ -32,11 +32,10 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.zulily.omicron.Utils.info;
 
 /**
  * SLA {@link com.zulily.omicron.sla.Policy} that generates alerts based on how long it's been
- * since a {@link Job} has seen a successful return code
+ * since a {@link Job} has seen a successful return code, if ever
  */
 public final class TimeSinceLastSuccess extends Policy {
 
@@ -48,15 +47,8 @@ public final class TimeSinceLastSuccess extends Policy {
   );
   private final static String NAME = "Time_Since_Success";
 
-  /**
-   * See {@link com.zulily.omicron.sla.Policy} class for function details
-   *
-   * @param job The task to be evaluated
-   * @return Either a success or fail alert, or null if an evaluation can't be made
-   */
-
   @Override
-  public boolean isDisabled(final Job job) {
+  protected boolean isDisabled(final Job job) {
     // Per config comment, -1 indicates disabled alert for this policy
     return job.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess) == -1;
   }
@@ -71,24 +63,19 @@ public final class TimeSinceLastSuccess extends Policy {
 
     final ImmutableSortedSet<TaskLogEntry> logView = job.filterLog(STATUS_FILTER);
 
-    info("Job {0} filtered log: {1}", String.valueOf(job.getCrontabExpression().getLineNumber()), dumpLog(logView));
-
     // No observable status changes in the task log - still nothing to do
     if (logView.isEmpty()) {
-      info("Job {0}: no log entries - not applicable", String.valueOf(job.getCrontabExpression().getLineNumber()));
       return createNotApplicableAlert(job);
     }
 
     // Just succeed if the last log status is complete
     // This also avoids false alerts during schedule gaps
     if (logView.last().getTaskStatus() == TaskStatus.Complete) {
-      info("Job {0}: last status complete - success", String.valueOf(job.getCrontabExpression().getLineNumber()));
       return createAlert(job, logView.last(), AlertStatus.Success);
     }
 
     // Avoid spamming alerts during gaps in the schedule
     if (alertedOnceSinceLastActive(logView.last().getTimestamp(), job.getJobId())) {
-      info("Job {0}: already alerted - not applicable", String.valueOf(job.getCrontabExpression().getLineNumber()));
       return createNotApplicableAlert(job);
     }
 
@@ -103,7 +90,6 @@ public final class TimeSinceLastSuccess extends Policy {
     // If we've seen at least one success in recent history and a task is running,
     // do not alert until a final status is achieved to avoid noise before potential recovery
     if (logView.last().getTaskStatus() == TaskStatus.Started && latestComplete.isPresent()) {
-      info("Job {0}: completed at some point, currently started - not applicable", String.valueOf(job.getCrontabExpression().getLineNumber()));
       return createNotApplicableAlert(job);
     }
 
@@ -116,10 +102,8 @@ public final class TimeSinceLastSuccess extends Policy {
     final long minutesIncomplete = TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - baselineTaskLogEntry.getTimestamp());
 
     if (minutesIncomplete <= minutesBetweenSuccessThreshold) {
-      info("Job {0}: minutes incomplete within threshold - success", String.valueOf(job.getCrontabExpression().getLineNumber()));
       return createAlert(job, baselineTaskLogEntry, AlertStatus.Success);
     } else {
-      info("Job {0}: beyond threshold - failure", String.valueOf(job.getCrontabExpression().getLineNumber()));
       return createAlert(job, baselineTaskLogEntry, AlertStatus.Failure);
     }
 

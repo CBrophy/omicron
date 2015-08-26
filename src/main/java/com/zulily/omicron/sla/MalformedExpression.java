@@ -29,7 +29,7 @@ public class MalformedExpression extends Policy {
   private final static String NAME = "Malformed_Expression";
 
   @Override
-  public boolean isDisabled(final Job job) {
+  protected boolean isDisabled(final Job job) {
     // Per config comment, -1 indicates disabled alert for this policy
     return job.getConfiguration().getInt(ConfigKey.SLAMalformedExpressionAlertDelayMinutes) == -1;
   }

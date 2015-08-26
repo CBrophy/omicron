@@ -14,8 +14,7 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <prerequisites>
     <maven>3.0</maven>
@@ -23,7 +22,7 @@
 
   <groupId>com.zulily.omicron</groupId>
   <artifactId>omicron</artifactId>
-  <version>1.1-SNAPSHOT</version>
+  <version>1.1</version>
   <packaging>jar</packaging>
   <name>Omicron</name>
   <description>A simple replacement for crond with team task tracking features.</description>
@@ -44,7 +43,7 @@
   <scm>
     <connection>scm:git:ssh://git@github.com:zulily/omicron.git</connection>
     <developerConnection>scm:git:ssh://git@github.com:zulily/omicron.git</developerConnection>
-    <tag>v1.0</tag>
+    <tag>omicron-1.1</tag>
   </scm>
 
 
@@ -142,7 +141,7 @@
                 </excludes>
               </artifactSet>
               <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ComponentsXmlResourceTransformer"/>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ComponentsXmlResourceTransformer" />
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>com.zulily.omicron.Main</mainClass>
                   <manifestEntries>

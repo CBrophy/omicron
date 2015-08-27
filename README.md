@@ -41,6 +41,8 @@ Features
     
     **Time Since Success**: do not alert if the job has a recent success and is currently running
     
+    **Time Since Success**: do not alert if that previous run was a success, regardless of the time that has passed
+    
 *   NEW config option: **task.timeout.minutes** -> Automatically kill jobs that are taking too long
 *   NEW config option: **command.path** -> Configure the location of external commands
 *   NEW config option: **alert.downtime** -> Set a start time and duration for silencing alerts either system-wide or at the task level

@@ -58,8 +58,6 @@ public final class Job implements Comparable<Job> {
 
   private int scheduledRunCount = 0;
 
-  private long nextExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
-
   /**
    * Constructor
    *
@@ -140,8 +138,6 @@ public final class Job implements Comparable<Job> {
           now.getMillis()
         )
       );
-
-      this.nextExecutionTimestamp = this.schedule.getNextRunAfter(localDateTime).toDateTime().getMillis();
 
       info("[executing@{0} {1}, Line: {2}] {3} ", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), String.valueOf(crontabExpression.getLineNumber()), crontabExpression.getCommand());
 
@@ -243,10 +239,6 @@ public final class Job implements Comparable<Job> {
     return this.crontabExpression.toString();
   }
 
-  public long getNextExecutionTimestamp() {
-    return nextExecutionTimestamp;
-  }
-
   public long getJobId() {
     return jobId;
   }
@@ -284,13 +276,4 @@ public final class Job implements Comparable<Job> {
     return result.build();
   }
 
-  public boolean hasLogEntries() {
-    reentrantLock.lock();
-
-    try {
-      return !taskLog.isEmpty();
-    } finally {
-      reentrantLock.unlock();
-    }
-  }
 }

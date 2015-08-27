@@ -54,7 +54,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
   private final Configuration configuration;
 
   // These values are read by the parent thread to track execution
-  private AtomicLong startTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
   private AtomicLong endTimeMilliseconds = new AtomicLong(-1L);
   private AtomicInteger returnCode = new AtomicInteger(255);
   private AtomicLong pid = new AtomicLong(-1L);
@@ -91,8 +90,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
       final ProcessBuilder processBuilder = new ProcessBuilder(configuration.getString(ConfigKey.CommandSu), "-", executingUser, "-c", commandLine);
 
       processBuilder.inheritIO();
-
-      this.startTimeMilliseconds.set(DateTime.now().getMillis());
 
       final Process process = processBuilder.start();
 
@@ -211,7 +208,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     // This ordering in intended to be used for the
     // chronologically-dependent loop in ScheduledTask.sweepRunningTasks
     return ComparisonChain.start()
-      .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
       .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
       .compare(this.commandLine, o.commandLine)
       .compare(this.pid.get(), o.pid.get())
@@ -226,7 +222,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     return o instanceof RunningTask
       && this.commandLine.equals(((RunningTask) o).commandLine)
       && this.pid.get() == ((RunningTask) o).pid.get()
-      && this.startTimeMilliseconds.get() == ((RunningTask) o).startTimeMilliseconds.get()
       && this.launchTimeMilliseconds == ((RunningTask) o).launchTimeMilliseconds;
   }
 
@@ -237,10 +232,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
 
   public int getReturnCode() {
     return returnCode.get();
-  }
-
-  public long getStartTimeMilliseconds() {
-    return startTimeMilliseconds.get();
   }
 
   public long getEndTimeMilliseconds() {

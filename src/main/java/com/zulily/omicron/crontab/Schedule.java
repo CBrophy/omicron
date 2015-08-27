@@ -80,66 +80,6 @@ public class Schedule {
       && minutes.contains(localDateTime.getMinuteOfHour());
   }
 
-  /**
-   * Determines the next time in the schedule whitelist after a specified
-   * starting point (exclusive)
-   *
-   * @param localDateTime The starting point
-   * @return The next expected localDateTime in the schedule whitelist
-   */
-  public LocalDateTime getNextRunAfter(final LocalDateTime localDateTime) {
-    checkNotNull(localDateTime, "localDateTime");
-
-    int hour = localDateTime.getHourOfDay();
-    int minute = localDateTime.getMinuteOfHour();
-
-    // It's never the current minute, always the next or first available
-    // minute in the following hour
-    Integer nextMinute = minutes.higher(minute);
-
-    if (nextMinute == null) {
-      nextMinute = minutes.first();
-    }
-
-    // If the minute flipped over, then its the next highest hour
-    // or the first hour if no next highest hour exists
-
-    Integer nextHour = hours.ceiling(nextMinute > minute ? hour : hour + 1);
-
-    if (nextHour == null) {
-      nextHour = hours.first();
-    }
-
-    LocalDateTime result = localDateTime.withMinuteOfHour(nextMinute).withHourOfDay(nextHour);
-
-    // If the hour rolled over to the next day, or the current day is not in schedule
-    // just get the next calendar day in schedule at the start of the permitted minute & hour
-
-    if (nextHour < hour || !timeInSchedule(result)) {
-      return findRunDayCeiling(result.plusDays(1));
-    } else {
-      return result;
-    }
-
-  }
-
-  private LocalDateTime findRunDayCeiling(final LocalDateTime localDateTime) {
-    LocalDateTime result = new LocalDateTime(localDateTime).withMinuteOfHour(minutes.first()).withHourOfDay(hours.first());
-
-
-    // Looping is simpler, albeit not efficient compared
-    // to the logic of reconciling day, month, and dayOfWeek
-    // with the possible conflict between day/month
-    // as they may or may not be an appropriate day of week to
-    // meet schedule criteria
-
-    while (!timeInSchedule(result)) {
-      result = result.plusDays(1);
-    }
-
-    return result;
-  }
-
   private static int extractDayOfWeek(final LocalDateTime localDateTime) {
     // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match crontab expression range of 0-6
     // see evaluateExpressionPart() comments for more information

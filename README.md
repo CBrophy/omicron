@@ -18,6 +18,8 @@ Current Functional Requirements
 * JRE 8 or above
 
 * Linux platform tested
+
+  - external commands: kill, pstree (procfs-related utility), and su required
   - OSX untested, might work
   - Windows untested, platform specific functions will most likely fail (su/root checks)
 
@@ -47,6 +49,8 @@ Features
 *   NEW config option: **command.path** -> Configure the location of external commands
 *   NEW config option: **alert.downtime** -> Set a start time and duration for silencing alerts either system-wide or at the task level
 *   BREAKING CHANGE: **task.duplicate.allowed.count** renamed to **task.max.instance.count**
+*   Updated dependencies
+*   JDK 8 required to build, JRE 8 required to run
 
 
 **1.0**

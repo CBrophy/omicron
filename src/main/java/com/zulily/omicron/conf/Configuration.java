@@ -23,12 +23,13 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.zulily.omicron.Utils;
-import org.joda.time.Chronology;
-import org.joda.time.LocalTime;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.time.Clock;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -248,8 +249,12 @@ public class Configuration {
   /**
    * @return The chronology to interpret the crontab schedule under
    */
-  public Chronology getChronology() {
-    return Utils.timeZoneToChronology(getString(ConfigKey.TimeZone));
+  public ZoneId getZoneId() {
+    return ZoneId.of(getString(ConfigKey.TimeZone));
+  }
+
+  public Clock getClock(){
+    return Clock.system(getZoneId());
   }
 
   @Override

@@ -20,8 +20,10 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.Crontab;
 import com.zulily.omicron.scheduling.JobManager;
-import org.joda.time.DateTime;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -123,7 +125,13 @@ public final class Main {
   }
 
   private static long getTargetMinuteMillisFromNow(final int minuteIncrement) {
-    return DateTime.now().plusMinutes(minuteIncrement).withSecondOfMinute(0).withMillisOfSecond(0).getMillis();
+    return ZonedDateTime
+      .now(Clock.systemUTC())
+      .with(ChronoField.SECOND_OF_MINUTE, 0)
+      .with(ChronoField.MILLI_OF_SECOND, 0)
+      .plusMinutes(minuteIncrement)
+      .toInstant()
+      .toEpochMilli();
   }
 
   private static void printHelp() {

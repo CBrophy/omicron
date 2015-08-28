@@ -22,9 +22,9 @@ import com.zulily.omicron.alert.AlertStatus;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.TimeInterval;
 import com.zulily.omicron.scheduling.Job;
-import org.joda.time.DateTime;
-import org.joda.time.Interval;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -128,7 +128,7 @@ public abstract class Policy {
 
   private boolean delayRepeat(final AlertLogEntry alertLogEntry, final Job job) {
 
-    return DateTime.now().getMillis() - alertLogEntry.getTimestamp() <= TimeUnit.MINUTES.toMillis(
+    return Clock.systemUTC().millis() - alertLogEntry.getTimestamp() <= TimeUnit.MINUTES.toMillis(
       job
         .getConfiguration()
         .getInt(ConfigKey.AlertMinutesDelayRepeat));
@@ -150,13 +150,7 @@ public abstract class Policy {
   private boolean isDowntime(final Job job) {
     TimeInterval timeInterval = job.getConfiguration().getTimeInterval(ConfigKey.AlertDowntime);
 
-    if (timeInterval == null) {
-      return false;
-    }
-
-    Interval interval = timeInterval.asInterval(job.getConfiguration().getChronology());
-
-    return interval.contains(DateTime.now(job.getConfiguration().getChronology()));
+    return timeInterval != null && timeInterval.contains(ZonedDateTime.now(job.getConfiguration().getClock()));
   }
 
 

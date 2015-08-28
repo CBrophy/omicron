@@ -23,9 +23,9 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 import com.zulily.omicron.crontab.Schedule;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -108,14 +108,14 @@ public final class Job implements Comparable<Job> {
    */
   public boolean run() {
 
-    final DateTime now = DateTime.now();
+    final ZonedDateTime now = ZonedDateTime.now(Clock.systemUTC());
 
-    final LocalDateTime localDateTime = new LocalDateTime(now.getMillis(), configuration.getChronology());
+    final ZonedDateTime jobInstant = ZonedDateTime.now(configuration.getClock());
 
     // Cleans out old process pointers and log entries
     sweepRunningTasks();
 
-    if (!schedule.timeInSchedule(localDateTime)) {
+    if (!schedule.timeInSchedule(jobInstant)) {
       return false;
     }
 
@@ -135,17 +135,17 @@ public final class Job implements Comparable<Job> {
         new TaskLogEntry(
           runningTask.getTaskId(),
           TaskStatus.Started,
-          now.getMillis()
+          now.toInstant().toEpochMilli()
         )
       );
 
-      info("[executing@{0} {1}, Line: {2}] {3} ", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), String.valueOf(crontabExpression.getLineNumber()), crontabExpression.getCommand());
+      info("[executed@{0} {1}, Line: {2}] {3} ", Utils.MESSAGE_DATETIME_FORMATTER.format(jobInstant), String.valueOf(crontabExpression.getLineNumber()), crontabExpression.getCommand());
 
       return true;
 
     } else {
 
-      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, now.getMillis()));
+      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, now.toInstant().toEpochMilli()));
 
     }
 

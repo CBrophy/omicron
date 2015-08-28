@@ -19,12 +19,12 @@ import com.google.common.collect.ComparisonChain;
 import com.zulily.omicron.Utils;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
-import org.joda.time.DateTime;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -69,7 +69,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     this.taskId = taskId;
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.executingUser = checkNotNull(executingUser, "executingUser");
-    this.launchTimeMilliseconds = DateTime.now().getMillis();
+    this.launchTimeMilliseconds = Clock.systemUTC().millis();
     this.thread = new Thread(this);
     this.configuration = configuration;
   }
@@ -82,7 +82,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
         // TODO: more nuance - there can be other reasons a task cannot start
         warn("Not running as root. Cannot execute: {0}", this.commandLine);
 
-        this.endTimeMilliseconds.set(DateTime.now().getMillis());
+        this.endTimeMilliseconds.set(Clock.systemUTC().millis());
 
         return;
       }
@@ -146,7 +146,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
         this.taskStatus = this.getReturnCode() == 0 ? TaskStatus.Complete : TaskStatus.Error;
       }
 
-      this.endTimeMilliseconds.set(DateTime.now().getMillis());
+      this.endTimeMilliseconds.set(Clock.systemUTC().millis());
 
     } catch (InterruptedException e) {
       warn("Command was interrupted: {0}\ninterruption reason-> {1}", commandLine, e.getMessage());

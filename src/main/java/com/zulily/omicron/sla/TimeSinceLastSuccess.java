@@ -25,9 +25,9 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.scheduling.Job;
 import com.zulily.omicron.scheduling.TaskLogEntry;
 import com.zulily.omicron.scheduling.TaskStatus;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -95,7 +95,7 @@ public final class TimeSinceLastSuccess extends Policy {
 
     final int minutesBetweenSuccessThreshold = job.getConfiguration().getInt(ConfigKey.SLAMinutesSinceSuccess);
 
-    final long currentTimestamp = DateTime.now().getMillis();
+    final long currentTimestamp = Clock.systemUTC().millis();
 
     final TaskLogEntry baselineTaskLogEntry = latestComplete.isPresent() ? latestComplete.get() : logView.first();
 
@@ -134,6 +134,8 @@ public final class TimeSinceLastSuccess extends Policy {
       "Alert status must be either success or failure"
     );
 
+    final Clock jobClock = job.getConfiguration().getClock();
+
     // Alert body looks like:
     //
     // SUCCESS: Time_Since_Success-> last success at 20141230 00:10 America/Los_Angeles (2 minutes ago; threshold set to 20)
@@ -149,21 +151,18 @@ public final class TimeSinceLastSuccess extends Policy {
 
     messageBuilder = messageBuilder
       .append(
-        (new LocalDateTime(
-          baselineTaskLogEntry.getTimestamp(),
-          job.getConfiguration().getChronology()
-        )).toString("yyyyMMdd HH:mm")
+        Utils.MESSAGE_DATETIME_FORMATTER
+          .format(Instant
+          .ofEpochMilli(baselineTaskLogEntry.getTimestamp())
+          .atZone(jobClock.getZone()))
       );
-
-    messageBuilder = messageBuilder.append(" ").append(job.getConfiguration().getChronology().getZone().toString());
 
     messageBuilder = messageBuilder
       .append(" (")
       .append(
-        TimeUnit.MILLISECONDS.toMinutes(
-          DateTime.now()
-            .getMillis() - baselineTaskLogEntry.getTimestamp()
-        )
+        TimeUnit
+          .MILLISECONDS
+          .toMinutes(Clock.systemUTC().millis() - baselineTaskLogEntry.getTimestamp())
       )
       .append(" minutes ago;");
 
@@ -176,10 +175,6 @@ public final class TimeSinceLastSuccess extends Policy {
       .append(")");
 
     return new Alert(messageBuilder.toString(), job, alertStatus);
-  }
-
-  private String dumpLog(ImmutableSortedSet<TaskLogEntry> logEntries) {
-    return Utils.COMMA_JOINER.join(logEntries);
   }
 
 }

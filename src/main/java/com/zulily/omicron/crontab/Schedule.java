@@ -16,7 +16,9 @@
 package com.zulily.omicron.crontab;
 
 import com.google.common.collect.ImmutableSortedSet;
-import org.joda.time.LocalDateTime;
+
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -65,25 +67,25 @@ public class Schedule {
   }
 
   /**
-   * Determines whether or not a localDateTime is whitelisted by the defined schedule
+   * Determines whether or not a zonedDateTime is whitelisted by the defined schedule
    *
-   * @param localDateTime The date and time to test
+   * @param zonedDateTime The date and time to test
    * @return True if the time is in schedule, False otherwise
    */
-  public boolean timeInSchedule(final LocalDateTime localDateTime) {
-    checkNotNull(localDateTime, "localDateTime");
+  public boolean timeInSchedule(final ZonedDateTime zonedDateTime) {
+    checkNotNull(zonedDateTime, "zonedDateTime");
 
-    return daysOfWeek.contains(extractDayOfWeek(localDateTime))
-      && months.contains(localDateTime.getMonthOfYear())
-      && days.contains(localDateTime.getDayOfMonth())
-      && hours.contains(localDateTime.getHourOfDay())
-      && minutes.contains(localDateTime.getMinuteOfHour());
+    return daysOfWeek.contains(convertToCronDayOfWeek(zonedDateTime.get(ChronoField.DAY_OF_WEEK)))
+      && months.contains(zonedDateTime.get(ChronoField.MONTH_OF_YEAR))
+      && days.contains(zonedDateTime.get(ChronoField.DAY_OF_MONTH))
+      && hours.contains(zonedDateTime.get(ChronoField.HOUR_OF_DAY))
+      && minutes.contains(zonedDateTime.get(ChronoField.MINUTE_OF_HOUR));
   }
 
-  private static int extractDayOfWeek(final LocalDateTime localDateTime) {
+  private static int convertToCronDayOfWeek(final int dayOfWeek) {
     // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match crontab expression range of 0-6
     // see evaluateExpressionPart() comments for more information
 
-    return localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek();
+    return dayOfWeek == 7 ? 0 : dayOfWeek;
   }
 }

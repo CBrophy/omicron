@@ -17,8 +17,8 @@
 package com.zulily.omicron.crontab;
 
 import com.google.common.collect.Range;
-import org.joda.time.LocalDateTime;
 import org.junit.Test;
+
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;

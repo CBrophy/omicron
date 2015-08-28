@@ -25,8 +25,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import com.zulily.omicron.Utils;
-import org.joda.time.DateTime;
 
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeSet;
@@ -79,7 +79,7 @@ public final class CrontabExpression implements Comparable<CrontabExpression> {
 
     checkArgument(lineNumber > 0, "lineNumber should be positive: %s", lineNumber);
 
-    this.timestamp = DateTime.now().getMillis();
+    this.timestamp = Clock.systemUTC().millis();
 
     this.lineNumber = lineNumber;
 

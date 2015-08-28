@@ -10,7 +10,7 @@ What is Omicron?
 
 Java implementation of crond with monitoring/alerting features. Works with the existing crontab file format.
 
-Third-party dependencies are: maven, guava, joda-time, junit, and javax mail.
+Third-party dependencies are: maven, guava, junit, and javax mail.
 
 Current Functional Requirements
 ===============================

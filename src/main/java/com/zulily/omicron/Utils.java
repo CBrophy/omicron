@@ -145,4 +145,9 @@ public final class Utils {
     return configFile.lastModified();
   }
 
+
+  public static boolean isNullOrEmpty(final String value){
+    return value == null || value.trim().isEmpty();
+  }
+
 }

@@ -15,6 +15,7 @@
  */
 package com.zulily.omicron.sla;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.zulily.omicron.alert.Alert;
 import com.zulily.omicron.alert.AlertLogEntry;
@@ -115,13 +116,9 @@ public abstract class Policy {
     }
 
     // Remove alerts for inactive jobs
-    final Sets.SetView<Long> oldAlerts = Sets.difference(lastAlertLog.keySet(), activeJobIds);
+    final ImmutableSet<Long> inactiveAlertJobIds = ImmutableSet.copyOf(Sets.difference(lastAlertLog.keySet(), activeJobIds));
 
-    for (Long oldJobId : oldAlerts) {
-
-      lastAlertLog.remove(oldJobId);
-
-    }
+    inactiveAlertJobIds.forEach(lastAlertLog::remove);
 
     return result;
   }

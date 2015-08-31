@@ -123,7 +123,13 @@ public final class Job implements Comparable<Job> {
 
     if (shouldRunNow()) {
 
-      final RunningTask runningTask = new RunningTask(scheduledRunCount, commandLine, executingUser, configuration);
+      final RunningTask runningTask = new RunningTask(
+        scheduledRunCount,
+        commandLine,
+        executingUser,
+        configuration.getInt(ConfigKey.TaskTimeoutMinutes),
+        configuration.getString(ConfigKey.CommandSu),
+        configuration.getString(ConfigKey.CommandKill));
 
       // Most recent run to the start of the list to
       // allow ordered deque from the end of the list

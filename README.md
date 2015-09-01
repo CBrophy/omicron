@@ -19,7 +19,7 @@ Current Functional Requirements
 
 * Linux platform tested
 
-  - external commands: kill, pstree (procfs-related utility), and su required
+  - external commands: kill, procfs, and su required
   - OSX untested, might work
   - Windows untested, platform specific functions will most likely fail (su/root checks)
 

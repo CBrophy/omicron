@@ -20,12 +20,10 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
-import org.joda.time.Chronology;
-import org.joda.time.DateTimeZone;
-import org.joda.time.chrono.ISOChronology;
 
 import java.io.File;
 import java.net.InetAddress;
+import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -44,6 +42,7 @@ public final class Utils {
   public final static Splitter WHITESPACE_SPLITTER = Splitter.on(CharMatcher.WHITESPACE).trimResults().omitEmptyStrings();
   public final static Splitter FORWARD_SLASH_SPLITTER = Splitter.on('/').trimResults().omitEmptyStrings();
   public final static Splitter HYPHEN_SPLITTER = Splitter.on('-').trimResults().omitEmptyStrings();
+  public final static DateTimeFormatter MESSAGE_DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd HH:mm VV");
 
 
   /**
@@ -126,16 +125,6 @@ public final class Utils {
   }
 
   /**
-   * Shortcut function to get a {@link org.joda.time.Chronology} object from a timezone string
-   *
-   * @param timeZoneString Time Zone string. see {@link org.joda.time.DateTimeZone}
-   * @return {@link org.joda.time.Chronology} associated with the specified timezone
-   */
-  public static Chronology timeZoneToChronology(final String timeZoneString) {
-    return ISOChronology.getInstance(DateTimeZone.forID(timeZoneString));
-  }
-
-  /**
    * Convenience function to get either the lastModified timestamp from a
    * specified file
    *
@@ -154,6 +143,11 @@ public final class Utils {
     }
 
     return configFile.lastModified();
+  }
+
+
+  public static boolean isNullOrEmpty(final String value){
+    return value == null || value.trim().isEmpty();
   }
 
 }

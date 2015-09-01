@@ -17,8 +17,8 @@
 package com.zulily.omicron;
 
 import com.google.common.collect.ComparisonChain;
-import org.joda.time.DateTime;
 
+import java.time.Clock;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -38,7 +38,7 @@ public abstract class LogEntry implements Comparable<LogEntry> {
    * of the entry
    */
   public LogEntry() {
-    this.timestamp = DateTime.now().getMillis();
+    this.timestamp = Clock.systemUTC().millis();
   }
 
   /**

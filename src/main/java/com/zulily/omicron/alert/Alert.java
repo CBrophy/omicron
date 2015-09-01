@@ -17,7 +17,8 @@ package com.zulily.omicron.alert;
 
 import com.google.common.collect.ComparisonChain;
 import com.zulily.omicron.scheduling.Job;
-import org.joda.time.DateTime;
+
+import java.time.Clock;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -34,7 +35,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class Alert implements Comparable<Alert> {
 
   private final AlertStatus alertStatus;
-  private final long createTimestamp = DateTime.now().getMillis();
+  private final long createTimestamp = Clock.systemUTC().millis();
   private final String message;
   private final Job job;
 

@@ -16,7 +16,9 @@
 package com.zulily.omicron.crontab;
 
 import com.google.common.collect.ImmutableSortedSet;
-import org.joda.time.LocalDateTime;
+
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -65,85 +67,25 @@ public class Schedule {
   }
 
   /**
-   * Determines whether or not a localDateTime is whitelisted by the defined schedule
+   * Determines whether or not a zonedDateTime is whitelisted by the defined schedule
    *
-   * @param localDateTime The date and time to test
+   * @param zonedDateTime The date and time to test
    * @return True if the time is in schedule, False otherwise
    */
-  public boolean timeInSchedule(final LocalDateTime localDateTime) {
-    checkNotNull(localDateTime, "localDateTime");
+  public boolean timeInSchedule(final ZonedDateTime zonedDateTime) {
+    checkNotNull(zonedDateTime, "zonedDateTime");
 
-    return daysOfWeek.contains(extractDayOfWeek(localDateTime))
-      && months.contains(localDateTime.getMonthOfYear())
-      && days.contains(localDateTime.getDayOfMonth())
-      && hours.contains(localDateTime.getHourOfDay())
-      && minutes.contains(localDateTime.getMinuteOfHour());
+    return daysOfWeek.contains(convertToCronDayOfWeek(zonedDateTime.get(ChronoField.DAY_OF_WEEK)))
+      && months.contains(zonedDateTime.get(ChronoField.MONTH_OF_YEAR))
+      && days.contains(zonedDateTime.get(ChronoField.DAY_OF_MONTH))
+      && hours.contains(zonedDateTime.get(ChronoField.HOUR_OF_DAY))
+      && minutes.contains(zonedDateTime.get(ChronoField.MINUTE_OF_HOUR));
   }
 
-  /**
-   * Determines the next time in the schedule whitelist after a specified
-   * starting point (exclusive)
-   *
-   * @param localDateTime The starting point
-   * @return The next expected localDateTime in the schedule whitelist
-   */
-  public LocalDateTime getNextRunAfter(final LocalDateTime localDateTime) {
-    checkNotNull(localDateTime, "localDateTime");
-
-    int hour = localDateTime.getHourOfDay();
-    int minute = localDateTime.getMinuteOfHour();
-
-    // It's never the current minute, always the next or first available
-    // minute in the following hour
-    Integer nextMinute = minutes.higher(minute);
-
-    if (nextMinute == null) {
-      nextMinute = minutes.first();
-    }
-
-    // If the minute flipped over, then its the next highest hour
-    // or the first hour if no next highest hour exists
-
-    Integer nextHour = hours.ceiling(nextMinute > minute ? hour : hour + 1);
-
-    if (nextHour == null) {
-      nextHour = hours.first();
-    }
-
-    LocalDateTime result = localDateTime.withMinuteOfHour(nextMinute).withHourOfDay(nextHour);
-
-    // If the hour rolled over to the next day, or the current day is not in schedule
-    // just get the next calendar day in schedule at the start of the permitted minute & hour
-
-    if (nextHour < hour || !timeInSchedule(result)) {
-      return findRunDayCeiling(result.plusDays(1));
-    } else {
-      return result;
-    }
-
-  }
-
-  private LocalDateTime findRunDayCeiling(final LocalDateTime localDateTime) {
-    LocalDateTime result = new LocalDateTime(localDateTime).withMinuteOfHour(minutes.first()).withHourOfDay(hours.first());
-
-
-    // Looping is simpler, albeit not efficient compared
-    // to the logic of reconciling day, month, and dayOfWeek
-    // with the possible conflict between day/month
-    // as they may or may not be an appropriate day of week to
-    // meet schedule criteria
-
-    while (!timeInSchedule(result)) {
-      result = result.plusDays(1);
-    }
-
-    return result;
-  }
-
-  private static int extractDayOfWeek(final LocalDateTime localDateTime) {
+  private static int convertToCronDayOfWeek(final int dayOfWeek) {
     // joda-time uses 1-7 dayOfWeek with Sunday as 7, so convert 7 to 0 to match crontab expression range of 0-6
     // see evaluateExpressionPart() comments for more information
 
-    return localDateTime.getDayOfWeek() == 7 ? 0 : localDateTime.getDayOfWeek();
+    return dayOfWeek == 7 ? 0 : dayOfWeek;
   }
 }

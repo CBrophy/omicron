@@ -23,9 +23,9 @@ import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CrontabExpression;
 import com.zulily.omicron.crontab.Schedule;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,8 +57,6 @@ public final class Job implements Comparable<Job> {
   private boolean active = true;
 
   private int scheduledRunCount = 0;
-
-  private long nextExecutionTimestamp = Utils.DEFAULT_TIMESTAMP;
 
   /**
    * Constructor
@@ -110,14 +108,14 @@ public final class Job implements Comparable<Job> {
    */
   public boolean run() {
 
-    final DateTime now = DateTime.now();
+    final ZonedDateTime now = ZonedDateTime.now(Clock.systemUTC());
 
-    final LocalDateTime localDateTime = new LocalDateTime(now.getMillis(), configuration.getChronology());
+    final ZonedDateTime jobInstant = ZonedDateTime.now(configuration.getClock());
 
     // Cleans out old process pointers and log entries
     sweepRunningTasks();
 
-    if (!schedule.timeInSchedule(localDateTime)) {
+    if (!schedule.timeInSchedule(jobInstant)) {
       return false;
     }
 
@@ -125,7 +123,13 @@ public final class Job implements Comparable<Job> {
 
     if (shouldRunNow()) {
 
-      final RunningTask runningTask = new RunningTask(scheduledRunCount, commandLine, executingUser, configuration);
+      final RunningTask runningTask = new RunningTask(
+        scheduledRunCount,
+        commandLine,
+        executingUser,
+        configuration.getInt(ConfigKey.TaskTimeoutMinutes),
+        configuration.getString(ConfigKey.CommandSu),
+        configuration.getString(ConfigKey.CommandKill));
 
       // Most recent run to the start of the list to
       // allow ordered deque from the end of the list
@@ -137,19 +141,17 @@ public final class Job implements Comparable<Job> {
         new TaskLogEntry(
           runningTask.getTaskId(),
           TaskStatus.Started,
-          now.getMillis()
+          now.toInstant().toEpochMilli()
         )
       );
 
-      this.nextExecutionTimestamp = this.schedule.getNextRunAfter(localDateTime).toDateTime().getMillis();
-
-      info("[executing@{0} {1}, Line: {2}] {3} ", localDateTime.toString("yyyyMMdd HH:mm"), configuration.getChronology().getZone().toString(), String.valueOf(crontabExpression.getLineNumber()), crontabExpression.getCommand());
+      info("Line: {0} -> execute @ {1}", String.valueOf(crontabExpression.getLineNumber()), Utils.MESSAGE_DATETIME_FORMATTER.format(jobInstant));
 
       return true;
 
     } else {
 
-      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, now.getMillis()));
+      writeLogEntry(new TaskLogEntry(this.scheduledRunCount, TaskStatus.Skipped, now.toInstant().toEpochMilli()));
 
     }
 
@@ -243,10 +245,6 @@ public final class Job implements Comparable<Job> {
     return this.crontabExpression.toString();
   }
 
-  public long getNextExecutionTimestamp() {
-    return nextExecutionTimestamp;
-  }
-
   public long getJobId() {
     return jobId;
   }
@@ -284,13 +282,4 @@ public final class Job implements Comparable<Job> {
     return result.build();
   }
 
-  public boolean hasLogEntries() {
-    reentrantLock.lock();
-
-    try {
-      return !taskLog.isEmpty();
-    } finally {
-      reentrantLock.unlock();
-    }
-  }
 }

@@ -10,7 +10,7 @@ What is Omicron?
 
 Java implementation of crond with monitoring/alerting features. Works with the existing crontab file format.
 
-Third-party dependencies are: maven, guava, joda-time, junit, and javax mail.
+Third-party dependencies are: maven, guava, junit, and javax mail. Requires kill, su and procfs
 
 Current Functional Requirements
 ===============================
@@ -18,6 +18,8 @@ Current Functional Requirements
 * JRE 8 or above
 
 * Linux platform tested
+
+  - external commands: kill, procfs, and su required
   - OSX untested, might work
   - Windows untested, platform specific functions will most likely fail (su/root checks)
 
@@ -33,6 +35,14 @@ See conf/crontab and conf/omicron.conf for deployment config examples
 Features
 ========
 
+**1.2**
+
+*   Fix concurrent access bug with deprecated process & active alert
+*   Fix broken child pid discovery
+*   Remove unreliable pstree requirement - use procfs instead
+*   Remove joda time as a dependency
+*   Various updates to some logging messages
+
 **1.1**
 
 *   Multiple bug fixes regarding SLA enforcement and notification
@@ -47,6 +57,8 @@ Features
 *   NEW config option: **command.path** -> Configure the location of external commands
 *   NEW config option: **alert.downtime** -> Set a start time and duration for silencing alerts either system-wide or at the task level
 *   BREAKING CHANGE: **task.duplicate.allowed.count** renamed to **task.max.instance.count**
+*   Updated dependencies
+*   JDK 8 required to build, JRE 8 required to run
 
 
 **1.0**

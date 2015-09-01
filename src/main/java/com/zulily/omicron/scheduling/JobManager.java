@@ -23,8 +23,8 @@ import com.zulily.omicron.conf.Configuration;
 import com.zulily.omicron.crontab.CronVariable;
 import com.zulily.omicron.crontab.Crontab;
 import com.zulily.omicron.crontab.CrontabExpression;
-import org.joda.time.DateTime;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -64,7 +64,7 @@ public final class JobManager {
   public void run() {
 
 
-    final long taskEvaluationStartMs = DateTime.now().getMillis();
+    final long taskEvaluationStartMs = Clock.systemUTC().millis();
 
     int executeCount = 0;
 
@@ -84,7 +84,7 @@ public final class JobManager {
     }
 
     if (executeCount > 0) {
-      info("Task evaluation took {0} ms: running {1} task(s)", String.valueOf(DateTime.now().getMillis() - taskEvaluationStartMs), String.valueOf(executeCount));
+      info("Task evaluation took {0} ms: running {1} task(s)", String.valueOf(Clock.systemUTC().millis() - taskEvaluationStartMs), String.valueOf(executeCount));
     }
 
     try {

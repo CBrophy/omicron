@@ -16,24 +16,24 @@
 package com.zulily.omicron.scheduling;
 
 import com.google.common.collect.ComparisonChain;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+import com.google.common.io.Files;
 import com.zulily.omicron.Utils;
-import com.zulily.omicron.conf.ConfigKey;
-import com.zulily.omicron.conf.Configuration;
-import org.joda.time.DateTime;
 
-import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.charset.Charset;
+import java.time.Clock;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.zulily.omicron.Utils.COMMA_JOINER;
-import static com.zulily.omicron.Utils.COMMA_SPLITTER;
 import static com.zulily.omicron.Utils.error;
 import static com.zulily.omicron.Utils.info;
 import static com.zulily.omicron.Utils.warn;
@@ -51,10 +51,11 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
   private final String executingUser;
   private final Thread thread;
   private final int taskId;
-  private final Configuration configuration;
+  private final int taskTimeoutMinutes;
+  private final String suCommand;
+  private final String killCommand;
 
   // These values are read by the parent thread to track execution
-  private AtomicLong startTimeMilliseconds = new AtomicLong(Long.MAX_VALUE);
   private AtomicLong endTimeMilliseconds = new AtomicLong(-1L);
   private AtomicInteger returnCode = new AtomicInteger(255);
   private AtomicLong pid = new AtomicLong(-1L);
@@ -64,52 +65,71 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     final int taskId,
     final String commandLine,
     final String executingUser,
-    final Configuration configuration
+    final int taskTimeoutMinutes,
+    final String suCommand,
+    final String killCommand
   ) {
 
     this.taskId = taskId;
     this.commandLine = checkNotNull(commandLine, "commandLine");
     this.executingUser = checkNotNull(executingUser, "executingUser");
-    this.launchTimeMilliseconds = DateTime.now().getMillis();
+    this.suCommand = checkNotNull(suCommand, "suCommand");
+    this.killCommand = checkNotNull(killCommand, "killCommand");
+    this.launchTimeMilliseconds = Clock.systemUTC().millis();
     this.thread = new Thread(this);
-    this.configuration = configuration;
+    this.taskTimeoutMinutes = taskTimeoutMinutes;
   }
 
   @Override
   public void run() {
     try {
 
-      if (!canStart()) {
-        // TODO: more nuance - there can be other reasons a task cannot start
+      if (!Utils.isRunningAsRoot()) {
+
         warn("Not running as root. Cannot execute: {0}", this.commandLine);
 
-        this.endTimeMilliseconds.set(DateTime.now().getMillis());
+        this.endTimeMilliseconds.set(Clock.systemUTC().millis());
 
         return;
       }
 
-      final ProcessBuilder processBuilder = new ProcessBuilder(configuration.getString(ConfigKey.CommandSu), "-", executingUser, "-c", commandLine);
+      if (!Utils.fileExistsAndCanRead(suCommand)) {
+
+        warn("su command does not exist as specified location: {0}", this.suCommand);
+
+        this.endTimeMilliseconds.set(Clock.systemUTC().millis());
+
+        return;
+      }
+
+      if (!Utils.fileExistsAndCanRead(killCommand)) {
+
+        warn("kill command does not exist as specified location: {0}", this.killCommand);
+
+        this.endTimeMilliseconds.set(Clock.systemUTC().millis());
+
+        return;
+      }
+
+
+      final ProcessBuilder processBuilder = new ProcessBuilder(suCommand, "-", executingUser, "-c", commandLine);
 
       processBuilder.inheritIO();
-
-      this.startTimeMilliseconds.set(DateTime.now().getMillis());
 
       final Process process = processBuilder.start();
 
       this.pid.set(determinePid(process));
 
       info(
-        "PID {0} -> Executed: {1}",
+        "PID {0} -> STARTED: {1}",
         String.valueOf(getPid()),
         commandLine
       );
 
-      final int timeoutMinutes = configuration.getInt(ConfigKey.TaskTimeoutMinutes);
-
       // If a timeout is set, then we must enter an isAlive loop test
       // after the kill command is issued otherwise the unkillable
       // process may pile up on the host
-      if (timeoutMinutes > 0) {
+      if (taskTimeoutMinutes > 0) {
 
         int killCount = 0;
 
@@ -123,7 +143,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
             );
           }
 
-          boolean finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES);
+          boolean finished = process.waitFor(taskTimeoutMinutes, TimeUnit.MINUTES);
 
           if (finished) {
 
@@ -149,7 +169,15 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
         this.taskStatus = this.getReturnCode() == 0 ? TaskStatus.Complete : TaskStatus.Error;
       }
 
-      this.endTimeMilliseconds.set(DateTime.now().getMillis());
+      this.endTimeMilliseconds.set(Clock.systemUTC().millis());
+
+      info(
+        "PID {0} -> TERMINATED: {1} [duration of {2} minutes]",
+        String.valueOf(getPid()),
+        commandLine,
+        String.valueOf(TimeUnit.MILLISECONDS.toMinutes(this.getEndTimeMilliseconds() - this.launchTimeMilliseconds))
+      );
+
 
     } catch (InterruptedException e) {
       warn("Command was interrupted: {0}\ninterruption reason-> {1}", commandLine, e.getMessage());
@@ -158,7 +186,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     }
   }
 
-  private static long determinePid(final Process process) {
+  static long determinePid(final Process process) {
 
     /*
     get the PID on unix/linux systems
@@ -211,7 +239,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     // This ordering in intended to be used for the
     // chronologically-dependent loop in ScheduledTask.sweepRunningTasks
     return ComparisonChain.start()
-      .compare(this.startTimeMilliseconds.get(), o.startTimeMilliseconds.get())
       .compare(this.launchTimeMilliseconds, o.launchTimeMilliseconds)
       .compare(this.commandLine, o.commandLine)
       .compare(this.pid.get(), o.pid.get())
@@ -226,7 +253,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     return o instanceof RunningTask
       && this.commandLine.equals(((RunningTask) o).commandLine)
       && this.pid.get() == ((RunningTask) o).pid.get()
-      && this.startTimeMilliseconds.get() == ((RunningTask) o).startTimeMilliseconds.get()
       && this.launchTimeMilliseconds == ((RunningTask) o).launchTimeMilliseconds;
   }
 
@@ -239,10 +265,6 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     return returnCode.get();
   }
 
-  public long getStartTimeMilliseconds() {
-    return startTimeMilliseconds.get();
-  }
-
   public long getEndTimeMilliseconds() {
     return endTimeMilliseconds.get();
   }
@@ -252,7 +274,9 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
   }
 
   private boolean canStart() {
-    return Utils.isRunningAsRoot();
+    return Utils.isRunningAsRoot()
+      && (new File(killCommand)).exists()
+      && (new File(suCommand)).exists();
   }
 
   public void start() {
@@ -275,11 +299,11 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     if (getPid() > -1L) {
       // The JVM cannot kill children of child processes - only external kill will work
 
-      final List<String> pidList = getPidList();
+      final Set<Long> pidList = recursivelyFindAllChildren(getPid());
 
       warn(
         "Task timeout after {0} minutes. Killing PID tree [{1}]: {2}",
-        configuration.getString(ConfigKey.TaskTimeoutMinutes),
+        String.valueOf(taskTimeoutMinutes),
         COMMA_JOINER.join(pidList),
         commandLine
       );
@@ -291,8 +315,8 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
       // A PID can be recycled by the OS in the time it takes to kill a process
       // and it's remaining children. The likelihood is low, as most OSes attempt
       // to avoid recycling PIDs so quickly, but the risk is there.
-      for (String pid : pidList) {
-        new ProcessBuilder(configuration.getString(ConfigKey.CommandKill), "-9", pid).start();
+      for (Long pid : pidList) {
+        new ProcessBuilder(killCommand, "-9", String.valueOf(pid)).start();
       }
 
     } else {
@@ -300,39 +324,47 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     }
   }
 
-  private List<String> getPidList() throws IOException, InterruptedException {
-    final Process pidListProcess = new ProcessBuilder(configuration.getString(ConfigKey.CommandPstree), String.valueOf(getPid()), "-p", "-a", "-l")
-      .start();
+  private static Set<Long> getProcFsChildren(long pid) {
+    try {
+      File childrenFile = new File(String.format("/proc/%s/task/%s/children", pid, pid));
 
-    final BufferedReader input = new BufferedReader(
-      new
-        InputStreamReader(pidListProcess.getInputStream())
-    );
+      HashSet<Long> result = Sets.newHashSet();
 
-    final BufferedReader error = new BufferedReader(
-      new
-        InputStreamReader(pidListProcess.getErrorStream())
-    );
+      if (Utils.fileExistsAndCanRead(childrenFile)) {
 
-    final List<String> results = new ArrayList<>();
+        Files.readLines(childrenFile, Charset.defaultCharset())
+          .stream()
+          .filter(line -> !Utils.isNullOrEmpty(line))
+          .map(Utils.WHITESPACE_SPLITTER::splitToList)
+          .forEach(list -> list
+            .stream()
+            .map(Long::parseLong)
+            .forEach(result::add));
+      }
 
-    String line;
+      return result;
 
-    while ((line = input.readLine()) != null) {
-      String command = COMMA_SPLITTER.splitToList(line).get(1);
-
-      results.add(command.substring(0, command.indexOf(' ')));
+    } catch (Exception ignored) {
     }
 
-    while ((line = error.readLine()) != null) {
-      error("Error getting pid list for pid {0}: {1}", String.valueOf(getPid()), line);
-    }
-
-    pidListProcess.waitFor();
-
-    input.close();
-    error.close();
-
-    return results;
+    return ImmutableSet.of();
   }
+
+  static Set<Long> recursivelyFindAllChildren(final long pid) {
+
+    Set<Long> result = Sets.newHashSet();
+
+    Set<Long> immediateChildren = getProcFsChildren(pid);
+
+    result.addAll(immediateChildren);
+
+    immediateChildren
+      .forEach(child -> result.addAll(recursivelyFindAllChildren(child)));
+
+    result.add(pid);
+
+    return result;
+
+  }
+
 }

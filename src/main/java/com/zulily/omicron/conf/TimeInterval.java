@@ -15,10 +15,10 @@
  */
 package com.zulily.omicron.conf;
 
-import org.joda.time.Chronology;
-import org.joda.time.DateTime;
-import org.joda.time.Interval;
-import org.joda.time.LocalTime;
+
+import java.time.Duration;
+import java.time.LocalTime;
+import java.time.ZonedDateTime;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -28,7 +28,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public class TimeInterval {
   private final LocalTime startTime;
-  private final int hours;
+  private final Duration hours;
 
   /**
    * Constructor
@@ -39,30 +39,21 @@ public class TimeInterval {
   TimeInterval(final LocalTime startTime, final int hours) {
     checkNotNull(startTime, "startTime");
     checkArgument(hours > 0, "hours must be positive");
-    this.hours = hours;
+    this.hours = Duration.ofHours(hours);
     this.startTime = startTime;
   }
 
-  public LocalTime getStartTime() {
-    return startTime;
-  }
-
-  public int getHours() {
-    return hours;
-  }
-
   /**
-   * Get this object as an Interval instance
-   *
-   * @param chronology The chronology of this interval's local time object
-   * @return The interval object represented by startTime + hours
+   * Tests to determine if an zonedDateTime is contained in the time interval (inclusive)
+   * @param zonedDateTime The zonedDateTime to test
+   * @return True if zonedDateTime is within the range of the time interval
    */
-  public Interval asInterval(final Chronology chronology) {
-    checkNotNull(chronology, "chronology");
+  public boolean contains(final ZonedDateTime zonedDateTime){
+    checkNotNull(zonedDateTime, "zonedDateTime");
 
-    DateTime start = DateTime.now(chronology).withTime(startTime.getHourOfDay(), startTime.getMinuteOfHour(), 0, 0);
-    DateTime end = start.plusHours(hours);
+    final ZonedDateTime startInstant = zonedDateTime.with(startTime);
+    final ZonedDateTime endInstant = startInstant.plus(hours);
 
-    return new Interval(start, end);
+    return (startInstant.isBefore(zonedDateTime) || startInstant.equals(zonedDateTime)) && (endInstant.isAfter(zonedDateTime) || endInstant.equals(zonedDateTime));
   }
 }

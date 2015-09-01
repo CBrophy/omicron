@@ -20,8 +20,8 @@ import com.zulily.omicron.alert.AlertStatus;
 import com.zulily.omicron.conf.ConfigKey;
 import com.zulily.omicron.crontab.CrontabExpression;
 import com.zulily.omicron.scheduling.Job;
-import org.joda.time.DateTime;
 
+import java.time.Clock;
 import java.util.concurrent.TimeUnit;
 
 public class MalformedExpression extends Policy {
@@ -47,7 +47,7 @@ public class MalformedExpression extends Policy {
 
     final long crontabReadTimestamp = crontabExpression.getTimestamp();
 
-    final long currentTimestamp = DateTime.now().getMillis();
+    final long currentTimestamp = Clock.systemUTC().millis();
 
     final int minutesMalformed = (int) TimeUnit.MILLISECONDS.toMinutes(currentTimestamp - crontabReadTimestamp);
 

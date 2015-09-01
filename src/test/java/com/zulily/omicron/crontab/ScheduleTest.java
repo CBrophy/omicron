@@ -17,8 +17,11 @@
 package com.zulily.omicron.crontab;
 
 import com.google.common.collect.Range;
-import org.joda.time.LocalDateTime;
 import org.junit.Test;
+
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -80,6 +83,14 @@ public class ScheduleTest {
       assertTrue(hour % 2 == 0);
     }
     assertEquals(expression2.getHours().size(), 12);
+
+    for(int minute = 0; minute < 60; minute++){
+      ZonedDateTime evenDateTime = ZonedDateTime.of(2015, 1, 1, 12, minute, 0, 0, ZoneId.systemDefault());
+      ZonedDateTime oddDateTime = ZonedDateTime.of(2015, 1, 1, 11, minute, 0, 0, ZoneId.systemDefault());
+
+      assertTrue(expression2.timeInSchedule(evenDateTime));
+      assertFalse(expression2.timeInSchedule(oddDateTime));
+    }
 
     assertTrue(expression3.getHours().size() == 1 && expression3.getHours().contains(1));
 
@@ -201,34 +212,6 @@ public class ScheduleTest {
     assertTrue(Range.closed(0, 6).containsAll(expression5.getDaysOfWeek()));
 
     assertFalse(expression5.getDaysOfWeek().contains(3));
-  }
-
-  @Test
-  public void testNextRunAfter() {
-    String testLine1 = "* * * * *  root    cd / && run-parts --report /etc/cron.hourly";
-    String testLine2 = "12-36 3-8 3-12 4-10 */2  root    cd / && run-parts --report /etc/cron.hourly";
-
-    Schedule expression1 = new CrontabExpression(1, testLine1).createSchedule();
-    Schedule expression2 = new CrontabExpression(1, testLine2).createSchedule();
-
-    LocalDateTime currentMinute = new LocalDateTime(2015, 1, 1, 23, 59);
-
-    LocalDateTime nextMinute = expression1.getNextRunAfter(currentMinute);
-
-    assertEquals(0, nextMinute.getMinuteOfHour());
-    assertEquals(0, nextMinute.getHourOfDay());
-    assertEquals(2, nextMinute.getDayOfMonth());
-    assertEquals(1, nextMinute.getMonthOfYear());
-    assertEquals(2015, nextMinute.getYear());
-
-    LocalDateTime nextStrangeMinute = expression2.getNextRunAfter(currentMinute);
-
-    assertEquals(12, nextStrangeMinute.getMinuteOfHour());
-    assertEquals(3, nextStrangeMinute.getHourOfDay());
-    assertEquals(4, nextStrangeMinute.getMonthOfYear());
-    assertEquals(4, nextStrangeMinute.getDayOfMonth());
-    assertEquals(2015, nextStrangeMinute.getYear());
-
   }
 
 }

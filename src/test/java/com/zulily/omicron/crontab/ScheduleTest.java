@@ -20,6 +20,9 @@ import com.google.common.collect.Range;
 import org.junit.Test;
 
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -80,6 +83,14 @@ public class ScheduleTest {
       assertTrue(hour % 2 == 0);
     }
     assertEquals(expression2.getHours().size(), 12);
+
+    for(int minute = 0; minute < 60; minute++){
+      ZonedDateTime evenDateTime = ZonedDateTime.of(2015, 1, 1, 12, minute, 0, 0, ZoneId.systemDefault());
+      ZonedDateTime oddDateTime = ZonedDateTime.of(2015, 1, 1, 11, minute, 0, 0, ZoneId.systemDefault());
+
+      assertTrue(expression2.timeInSchedule(evenDateTime));
+      assertFalse(expression2.timeInSchedule(oddDateTime));
+    }
 
     assertTrue(expression3.getHours().size() == 1 && expression3.getHours().contains(1));
 

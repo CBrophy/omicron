@@ -145,7 +145,7 @@ public final class Job implements Comparable<Job> {
         )
       );
 
-      info("[executed@{0} {1}, Line: {2}] {3} ", Utils.MESSAGE_DATETIME_FORMATTER.format(jobInstant), String.valueOf(crontabExpression.getLineNumber()), crontabExpression.getCommand());
+      info("Line: {0} -> execute @ {1}", String.valueOf(crontabExpression.getLineNumber()), Utils.MESSAGE_DATETIME_FORMATTER.format(jobInstant));
 
       return true;
 

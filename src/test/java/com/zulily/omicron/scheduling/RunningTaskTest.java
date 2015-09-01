@@ -3,19 +3,31 @@ package com.zulily.omicron.scheduling;
 import com.zulily.omicron.Utils;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Set;
+
+import static org.junit.Assert.assertTrue;
 
 public class RunningTaskTest {
 
   @Test
-  public void testGetPidList() throws IOException {
-    Process process = new ProcessBuilder("su", "-", "cbrophy", "-c", "echo \"hello\" & sleep 3600").start();
+  public void testProcFSWorks() throws IOException {
+    Set<Long> allPids = RunningTask.recursivelyFindAllChildren(getProcFsSelfPid());
 
-    long parentPid = RunningTask.determinePid(process);
+    assertTrue(allPids.size() > 0);
 
-    Set<Long> allPids = RunningTask.recursivelyFindAllChildren(parentPid);
+    allPids
+      .forEach(pid -> assertTrue(pid > -1));
+  }
 
-    System.out.println(Utils.COMMA_JOINER.join(allPids));
+  private static long getProcFsSelfPid() {
+    try {
+      String procFsPid = new File("/proc/self").getCanonicalFile().getName();
+      return Utils.isNullOrEmpty(procFsPid) ? -1 : Long.parseLong(procFsPid);
+
+    } catch (IOException e) {
+      return -1;
+    }
   }
 }

@@ -27,7 +27,6 @@ import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.time.Clock;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,7 +121,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
       this.pid.set(determinePid(process));
 
       info(
-        "PID {0} -> Executed: {1}",
+        "PID {0} -> STARTED: {1}",
         String.valueOf(getPid()),
         commandLine
       );
@@ -171,6 +170,14 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
       }
 
       this.endTimeMilliseconds.set(Clock.systemUTC().millis());
+
+      info(
+        "PID {0} -> TERMINATED: {1} [duration of {2} minutes]",
+        String.valueOf(getPid()),
+        commandLine,
+        String.valueOf(TimeUnit.MILLISECONDS.toMinutes(this.getEndTimeMilliseconds() - this.launchTimeMilliseconds))
+      );
+
 
     } catch (InterruptedException e) {
       warn("Command was interrupted: {0}\ninterruption reason-> {1}", commandLine, e.getMessage());
@@ -292,7 +299,7 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
     if (getPid() > -1L) {
       // The JVM cannot kill children of child processes - only external kill will work
 
-      final List<String> pidList = getPidList();
+      final Set<Long> pidList = recursivelyFindAllChildren(getPid());
 
       warn(
         "Task timeout after {0} minutes. Killing PID tree [{1}]: {2}",
@@ -308,17 +315,13 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
       // A PID can be recycled by the OS in the time it takes to kill a process
       // and it's remaining children. The likelihood is low, as most OSes attempt
       // to avoid recycling PIDs so quickly, but the risk is there.
-      for (String pid : pidList) {
-        new ProcessBuilder(killCommand, "-9", pid).start();
+      for (Long pid : pidList) {
+        new ProcessBuilder(killCommand, "-9", String.valueOf(pid)).start();
       }
 
     } else {
       warn("Could not kill task {0} since the pid could not be retrieved", commandLine);
     }
-  }
-
-  private List<String> getPidList() throws IOException, InterruptedException {
-    return null;
   }
 
   private static Set<Long> getProcFsChildren(long pid) {
@@ -339,6 +342,8 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
             .forEach(result::add));
       }
 
+      return result;
+
     } catch (Exception ignored) {
     }
 
@@ -355,6 +360,8 @@ final class RunningTask implements Runnable, Comparable<RunningTask> {
 
     immediateChildren
       .forEach(child -> result.addAll(recursivelyFindAllChildren(child)));
+
+    result.add(pid);
 
     return result;
 

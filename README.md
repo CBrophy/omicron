@@ -10,7 +10,7 @@ What is Omicron?
 
 Java implementation of crond with monitoring/alerting features. Works with the existing crontab file format.
 
-Third-party dependencies are: maven, guava, junit, and javax mail.
+Third-party dependencies are: maven, guava, junit, and javax mail. Requires kill, su and procfs
 
 Current Functional Requirements
 ===============================
@@ -34,6 +34,14 @@ See conf/crontab and conf/omicron.conf for deployment config examples
 
 Features
 ========
+
+**1.2**
+
+*   Fix concurrent access bug with deprecated process & active alert
+*   Fix broken child pid discovery
+*   Remove unreliable pstree requirement - use procfs instead
+*   Remove joda time as a dependency
+*   Various updates to some logging messages
 
 **1.1**
 
